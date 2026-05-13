@@ -4,8 +4,7 @@
 
 ## How to report
 
-- **Preferred:** open a [private security advisory on GitHub](https://github.com/rashad/pige/security/advisories/new). This keeps the report invisible to the public until it's resolved and lets us collaborate on the fix in a private fork.
-- **Alternative:** email **rashad.karanouh@gmail.com** with the details. Encrypt with my public key if you have one; otherwise plain text is fine.
+Open a [private security advisory on GitHub](https://github.com/rashad/pige/security/advisories/new). This keeps the report invisible to the public until it's resolved and lets us collaborate on the fix in a private fork.
 
 Please include:
 

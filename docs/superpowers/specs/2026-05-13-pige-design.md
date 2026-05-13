@@ -145,7 +145,7 @@ freelance-cal/
 └── docs/
     └── superpowers/
         └── specs/
-            └── 2026-05-13-freelance-cal-design.md
+            └── 2026-05-13-pige-design.md
 ```
 
 ## 6. Stack technique
