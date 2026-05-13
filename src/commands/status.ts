@@ -6,7 +6,7 @@ import { configPath } from "../config/store.js";
 import { accent, dim } from "../render/palette.js";
 
 export async function runStatus(ctx: Context): Promise<void> {
-  console.log(accent("freelance-cal · statut"));
+  console.log(accent("pige · statut"));
   console.log();
 
   console.log(`   ${dim("Config :")} ${configPath()}`);

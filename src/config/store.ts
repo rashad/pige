@@ -5,7 +5,7 @@ import type { Config } from "./schema.js";
 import { CONFIG_VERSION } from "./schema.js";
 
 export function defaultConfigDir(): string {
-  return process.env.FREELANCE_CAL_DIR ?? join(homedir(), ".config", "freelance-cal");
+  return process.env.PIGE_DIR ?? join(homedir(), ".config", "pige");
 }
 
 export function configPath(dir: string = defaultConfigDir()): string {

@@ -19,7 +19,7 @@ export function renderMonthlyCalendar(
   const monthName = MONTH_NAMES_FR[month1to12 - 1] ?? "";
   const businessDays = days.filter((d) => !d.isWeekend && !d.isHoliday).length;
   const workedDays = days.filter((d) => d.totalDays > 0).length;
-  const title = `freelance · ${monthName} ${year}`;
+  const title = `pige · ${monthName} ${year}`;
   const rightHud = `${workedDays} / ${businessDays} jours`;
   const titlePadded = (title + " ".repeat(Math.max(1, CAL_WIDTH - 4 - title.length - rightHud.length)) + rightHud);
 

@@ -1,10 +1,10 @@
 {
-  "name": "freelance-cal",
+  "name": "pige",
   "version": "0.1.0",
   "description": "Terminal calendar for freelance day tracking on top of Solidtime",
   "type": "module",
   "bin": {
-    "freelance": "./dist/cli.js"
+    "pige": "./dist/cli.js"
   },
   "scripts": {
     "dev": "tsx src/cli.ts",

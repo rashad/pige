@@ -14,7 +14,7 @@ type Choice = "today" | "week" | "cal" | "sync" | "config" | "status" | "quit";
 export async function runMenu(ctx: Context, src: EntrySource): Promise<void> {
   while (true) {
     console.log();
-    console.log(accent("freelance"));
+    console.log(accent("pige"));
     const choice = await expand<Choice>({
       message: "Que veux-tu voir ?",
       expanded: true,

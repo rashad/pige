@@ -12,7 +12,7 @@ function slugify(s: string): string {
 }
 
 export async function runConfig(): Promise<void> {
-  console.log(accent("freelance-cal · configuration"));
+  console.log(accent("pige · configuration"));
   console.log();
 
   const existing = await getToken();

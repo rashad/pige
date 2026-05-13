@@ -2,9 +2,9 @@ import { mkdir, readFile, writeFile, chmod } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { defaultConfigDir } from "./store.js";
 
-const SERVICE = "freelance-cal";
+const SERVICE = "pige";
 const ACCOUNT = "solidtime-token";
-const ENV_VAR = "FREELANCE_SOLIDTIME_TOKEN";
+const ENV_VAR = "PIGE_SOLIDTIME_TOKEN";
 
 type KeytarLike = {
   setPassword(service: string, account: string, password: string): Promise<void>;

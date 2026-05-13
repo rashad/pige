@@ -14,7 +14,7 @@ export function buildEntrySource(ctx: Context): EntrySource {
         return filterByRange(cached.entries, fromYmd, toYmd);
       }
       const token = await getToken();
-      if (!token) throw new Error("Token Solidtime absent. Lance `freelance config`.");
+      if (!token) throw new Error("Token Solidtime absent. Lance `pige config`.");
       const client = createSolidtimeClient({
         baseUrl: ctx.config.solidtime.baseUrl,
         token,

@@ -7,7 +7,7 @@ import { dim, accent } from "../render/palette.js";
 export async function runSync(ctx: Context): Promise<void> {
   const token = await getToken();
   if (!token) {
-    console.error("❌ Token Solidtime absent. Lance `freelance config`.");
+    console.error("❌ Token Solidtime absent. Lance `pige config`.");
     process.exit(1);
   }
   const client = createSolidtimeClient({
