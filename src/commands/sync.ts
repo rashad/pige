@@ -1,5 +1,5 @@
 import type { Context } from "./context.js";
-import { createSolidtimeClient } from "../solidtime/client.js";
+import { createOrgClient } from "../solidtime/client.js";
 import { getToken } from "../config/keychain.js";
 import { writeCache, defaultCachePath, CACHE_VERSION } from "../cache/store.js";
 import { dim, accent } from "../render/palette.js";
@@ -10,7 +10,7 @@ export async function runSync(ctx: Context): Promise<void> {
     console.error(`❌ ${ctx.t("errors.tokenAbsent")}`);
     process.exit(1);
   }
-  const client = createSolidtimeClient({
+  const client = createOrgClient({
     baseUrl: ctx.config.solidtime.baseUrl,
     token,
     organizationId: ctx.config.solidtime.organizationId,

@@ -1,7 +1,7 @@
 import type { Context } from "../commands/context.js";
 import type { EntrySource } from "../commands/today.js";
 import type { TimeEntry } from "../solidtime/types.js";
-import { createSolidtimeClient } from "../solidtime/client.js";
+import { createOrgClient } from "../solidtime/client.js";
 import { getToken } from "../config/keychain.js";
 import { readCache, writeCache, defaultCachePath, isFresh, covers, CACHE_VERSION } from "../cache/store.js";
 
@@ -15,7 +15,7 @@ export function buildEntrySource(ctx: Context): EntrySource {
       }
       const token = await getToken();
       if (!token) throw new Error(ctx.t("errors.tokenAbsent"));
-      const client = createSolidtimeClient({
+      const client = createOrgClient({
         baseUrl: ctx.config.solidtime.baseUrl,
         token,
         organizationId: ctx.config.solidtime.organizationId,

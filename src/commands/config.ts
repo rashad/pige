@@ -2,7 +2,7 @@ import { input, select, checkbox, password, confirm } from "@inquirer/prompts";
 import { loadConfig, saveConfig, configPath } from "../config/store.js";
 import { defaultConfig, type Client, type ColorKey } from "../config/schema.js";
 import { setToken, getToken } from "../config/keychain.js";
-import { createSolidtimeClient } from "../solidtime/client.js";
+import { createAuthClient, createOrgClient } from "../solidtime/client.js";
 import { accent, dim } from "../render/palette.js";
 import { type Locale, createT, normalizeLocale, detectSystemLocale } from "../i18n.js";
 
@@ -45,26 +45,22 @@ export async function runConfig(): Promise<void> {
     console.log(dim(t("config.tokenStored", { backend: stored.backend })));
   }
 
-  const tmpClient = createSolidtimeClient({
+  const authClient = createAuthClient({
     baseUrl: "https://app.solidtime.io/api",
     token: token!,
-    organizationId: "PLACEHOLDER",
   });
 
-  let me: Awaited<ReturnType<typeof tmpClient.getMe>> | undefined;
+  let me: Awaited<ReturnType<typeof authClient.getMe>>;
   try {
-    me = await tmpClient.getMe();
+    me = await authClient.getMe();
   } catch (e: unknown) {
-    console.error(t("config.tokenRejected", { msg: (e as Error).message }));
-    process.exit(1);
+    throw new Error(t("config.tokenRejected", { msg: (e as Error).message }));
   }
-  if (!me) process.exit(1);
   console.log(dim(t("config.connected", { email: me.email })));
 
-  const orgs = await tmpClient.listOrganizations();
+  const orgs = await authClient.listOrganizations();
   if (orgs.length === 0) {
-    console.error(t("config.noOrgs"));
-    process.exit(1);
+    throw new Error(t("config.noOrgs"));
   }
   const orgId =
     orgs.length === 1
@@ -75,15 +71,14 @@ export async function runConfig(): Promise<void> {
           choices: orgs.map((o) => ({ name: o.name, value: o.id })),
         });
 
-  const realClient = createSolidtimeClient({
+  const orgClient = createOrgClient({
     baseUrl: "https://app.solidtime.io/api",
     token: token!,
     organizationId: orgId,
   });
-  const projects = await realClient.listProjects();
+  const projects = await orgClient.listProjects();
   if (projects.length === 0) {
-    console.error(t("config.noProjects"));
-    process.exit(1);
+    throw new Error(t("config.noProjects"));
   }
 
   const existingCfg = existingCfgEarly ?? defaultConfig(orgId);

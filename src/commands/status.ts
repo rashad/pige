@@ -1,6 +1,6 @@
 import type { Context } from "./context.js";
 import { getToken } from "../config/keychain.js";
-import { createSolidtimeClient } from "../solidtime/client.js";
+import { createAuthClient } from "../solidtime/client.js";
 import { readCache, defaultCachePath } from "../cache/store.js";
 import { configPath } from "../config/store.js";
 import { accent, dim } from "../render/palette.js";
@@ -18,10 +18,9 @@ export async function runStatus(ctx: Context): Promise<void> {
     console.log(`   ${dim(ctx.t("status.token"))} ${ctx.t("status.tokenAbsent")}`);
   } else {
     try {
-      const c = createSolidtimeClient({
+      const c = createAuthClient({
         baseUrl: ctx.config.solidtime.baseUrl,
         token: tok,
-        organizationId: ctx.config.solidtime.organizationId,
       });
       const me = await c.getMe();
       console.log(`   ${dim(ctx.t("status.token"))} ${ctx.t("status.tokenValid", { email: me.email })}`);
