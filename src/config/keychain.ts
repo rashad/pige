@@ -6,23 +6,32 @@ const SERVICE = "pige";
 const ACCOUNT = "solidtime-token";
 const ENV_VAR = "PIGE_SOLIDTIME_TOKEN";
 
-type KeytarLike = {
-  setPassword(service: string, account: string, password: string): Promise<void>;
-  getPassword(service: string, account: string): Promise<string | null>;
-  deletePassword(service: string, account: string): Promise<boolean>;
+// Shape of the napi-rs/keyring `Entry` class we depend on. Wrapped behind this
+// type so the rest of the module doesn't import from the dynamic import target.
+type KeyringEntry = {
+  setPassword(password: string): void;
+  getPassword(): string | null;
+  deletePassword(): boolean;
 };
 
-let keytarMod: KeytarLike | null | undefined;
+type KeyringMod = {
+  Entry: new (service: string, account: string) => KeyringEntry;
+};
 
-async function loadKeytar(): Promise<KeytarLike | null> {
-  if (keytarMod !== undefined) return keytarMod;
+let keyringMod: KeyringMod | null | undefined;
+
+async function loadKeyring(): Promise<KeyringMod | null> {
+  if (keyringMod !== undefined) return keyringMod;
   try {
-    const mod = await import("keytar");
-    keytarMod = mod.default as KeytarLike;
+    keyringMod = (await import("@napi-rs/keyring")) as unknown as KeyringMod;
   } catch {
-    keytarMod = null;
+    keyringMod = null;
   }
-  return keytarMod;
+  return keyringMod;
+}
+
+function makeEntry(mod: KeyringMod): KeyringEntry {
+  return new mod.Entry(SERVICE, ACCOUNT);
 }
 
 function fallbackTokenPath(): string {
@@ -33,13 +42,13 @@ export async function getToken(): Promise<string | null> {
   const envToken = process.env[ENV_VAR];
   if (envToken && envToken.length > 0) return envToken;
 
-  const kt = await loadKeytar();
-  if (kt) {
+  const mod = await loadKeyring();
+  if (mod) {
     try {
-      const tok = await kt.getPassword(SERVICE, ACCOUNT);
+      const tok = makeEntry(mod).getPassword();
       if (tok) return tok;
     } catch {
-      // fall through to file
+      // NoEntry / Ambiguous / OS error — fall through to file fallback.
     }
   }
 
@@ -52,13 +61,13 @@ export async function getToken(): Promise<string | null> {
 }
 
 export async function setToken(token: string): Promise<{ backend: "keychain" | "file" }> {
-  const kt = await loadKeytar();
-  if (kt) {
+  const mod = await loadKeyring();
+  if (mod) {
     try {
-      await kt.setPassword(SERVICE, ACCOUNT, token);
+      makeEntry(mod).setPassword(token);
       return { backend: "keychain" };
     } catch {
-      // fall through
+      // fall through to file
     }
   }
   const path = fallbackTokenPath();
@@ -69,9 +78,9 @@ export async function setToken(token: string): Promise<{ backend: "keychain" | "
 }
 
 export async function deleteToken(): Promise<void> {
-  const kt = await loadKeytar();
-  if (kt) {
-    try { await kt.deletePassword(SERVICE, ACCOUNT); } catch { /* ignore */ }
+  const mod = await loadKeyring();
+  if (mod) {
+    try { makeEntry(mod).deletePassword(); } catch { /* ignore */ }
   }
   try {
     const { unlink } = await import("node:fs/promises");
