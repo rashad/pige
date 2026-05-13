@@ -7,9 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-05-13
+
 ### Added
 
 - `pige help`, `pige --help`, and `pige -h` print a usage block listing commands, flags, and environment variables (English only — help text is not localised).
+- `CLAUDE.md` onboarding guide at the repo root, capturing layer rules, conventions, gotchas, and the release flow.
 
 ## [0.2.0] — 2026-05-13
 
@@ -51,6 +54,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Configuration wizard** that pre-populates from existing config — pressing Enter through every prompt keeps the current setup.
 - MIT licensed.
 
-[Unreleased]: https://github.com/rashad/pige/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/rashad/pige/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/rashad/pige/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/rashad/pige/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/rashad/pige/releases/tag/v0.1.0
