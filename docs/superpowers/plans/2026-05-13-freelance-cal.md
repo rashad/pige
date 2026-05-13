@@ -1,0 +1,3071 @@
+# freelance-cal Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Build a Node.js/TypeScript CLI (`freelance`) that reads Solidtime time entries and renders a terminal monthly heatmap calendar plus daily/weekly views, with an interactive menu so the user does not have to remember subcommands.
+
+**Architecture:** Layered, pure-where-possible. `solidtime/` is the only HTTP-speaking layer. `domain/` aggregates entries into a normalized model. `render/` is pure (model → ANSI string) and snapshot-tested. `commands/` orchestrates. `cli.ts` dispatches. Cache (5 min TTL, 90-day window) lives in `~/.config/freelance-cal/cache.json`. Token in macOS Keychain via `keytar`, fallback env var.
+
+**Tech Stack:** Node.js ≥ 20, TypeScript (strict), `chalk` (truecolor), `@inquirer/prompts` (menu/wizard), `date-holidays` (FR holidays), `keytar` (macOS Keychain), `vitest` (tests), `tsup` (bundling), `tsx` (dev).
+
+**Reference spec:** `docs/superpowers/specs/2026-05-13-freelance-cal-design.md`.
+
+---
+
+## Phase 0 — Bootstrap
+
+### Task 0.1: package.json + tsconfig + source skeleton
+
+**Files:**
+- Create: `package.json`
+- Create: `tsconfig.json`
+- Create: `.gitignore`
+- Create: `src/cli.ts` (placeholder)
+- Create: `tests/.gitkeep`
+
+- [ ] **Step 1: Initialise package.json**
+
+Create `package.json`:
+
+```json
+{
+  "name": "freelance-cal",
+  "version": "0.1.0",
+  "description": "Terminal calendar for freelance day tracking on top of Solidtime",
+  "type": "module",
+  "bin": {
+    "freelance": "./dist/cli.js"
+  },
+  "scripts": {
+    "dev": "tsx src/cli.ts",
+    "build": "tsup src/cli.ts --format esm --target node20 --clean --shims",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "link:local": "npm run build && npm link"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@inquirer/prompts": "^7.0.0",
+    "chalk": "^5.3.0",
+    "date-holidays": "^3.23.0",
+    "keytar": "^7.9.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsup": "^8.0.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.4.0",
+    "vitest": "^2.0.0"
+  }
+}
+```
+
+- [ ] **Step 2: Create tsconfig.json**
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": false,
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "declaration": false,
+    "sourceMap": true
+  },
+  "include": ["src/**/*", "tests/**/*"]
+}
+```
+
+- [ ] **Step 3: Create .gitignore**
+
+```
+node_modules/
+dist/
+*.log
+.DS_Store
+coverage/
+.vitest-cache/
+```
+
+- [ ] **Step 4: Create placeholder src/cli.ts**
+
+```typescript
+#!/usr/bin/env node
+console.log("freelance-cal v0.1.0 (placeholder)");
+```
+
+- [ ] **Step 5: Install deps**
+
+Run:
+
+```bash
+cd ~/freelance-cal && npm install
+```
+
+Expected: `node_modules/` populated, no errors. `keytar` may print a native build notice — that's fine on macOS.
+
+- [ ] **Step 6: Verify dev run works**
+
+Run:
+
+```bash
+cd ~/freelance-cal && npx tsx src/cli.ts
+```
+
+Expected output: `freelance-cal v0.1.0 (placeholder)`
+
+- [ ] **Step 7: Commit**
+
+```bash
+cd ~/freelance-cal
+git add package.json tsconfig.json .gitignore src/ tests/
+git commit -m "chore: bootstrap freelance-cal project skeleton"
+```
+
+---
+
+### Task 0.2: Type definitions (config + Solidtime)
+
+> Defined here up-front so every later task can compile without forward references.
+
+**Files:**
+- Create: `src/config/schema.ts`
+- Create: `src/solidtime/types.ts`
+
+- [ ] **Step 1: Create config/schema.ts**
+
+```typescript
+export type ColorKey = "blue" | "green" | "amber" | "pink" | "cyan" | "purple";
+
+export type ClientId = string;
+
+export type Client = {
+  id: ClientId;
+  solidtimeProjectIds: string[];
+  label: string;
+  color: ColorKey;
+  targetDaysPerWeek: number;
+};
+
+export type Config = {
+  version: 1;
+  solidtime: {
+    baseUrl: string;
+    organizationId: string;
+  };
+  conversion: {
+    hoursPerDay: number;
+  };
+  clients: Client[];
+  locale: string;
+  holidaysRegion: string;
+};
+
+export const CONFIG_VERSION = 1 as const;
+
+export function defaultConfig(orgId: string): Config {
+  return {
+    version: CONFIG_VERSION,
+    solidtime: { baseUrl: "https://app.solidtime.io/api", organizationId: orgId },
+    conversion: { hoursPerDay: 7 },
+    clients: [],
+    locale: "fr-FR",
+    holidaysRegion: "FR",
+  };
+}
+```
+
+- [ ] **Step 2: Create solidtime/types.ts**
+
+```typescript
+export type SolidtimeProject = {
+  id: string;
+  name: string;
+  color?: string;
+  client_id?: string | null;
+  is_archived?: boolean;
+};
+
+export type SolidtimeMe = {
+  id: string;
+  name: string;
+  email: string;
+};
+
+export type SolidtimeMembership = {
+  id: string;
+  organization: { id: string; name: string };
+  role: string;
+};
+
+export type TimeEntry = {
+  id: string;
+  start: string;
+  end: string | null;
+  duration: number | null;
+  projectId: string;
+  description: string;
+  billable: boolean;
+};
+```
+
+- [ ] **Step 3: Type-check**
+
+```bash
+cd ~/freelance-cal && npm run typecheck
+```
+
+Expected: zero errors.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add src/config/schema.ts src/solidtime/types.ts
+git commit -m "feat: shared type definitions for config and Solidtime API"
+```
+
+---
+
+### Task 0.3: Vitest smoke test
+
+**Files:**
+- Create: `vitest.config.ts`
+- Create: `tests/smoke.test.ts`
+
+- [ ] **Step 1: Create vitest.config.ts**
+
+```typescript
+import { defineConfig } from "vitest/config";
+
+export default defineConfig({
+  test: {
+    include: ["tests/**/*.test.ts"],
+    environment: "node",
+    globals: false,
+  },
+});
+```
+
+- [ ] **Step 2: Write smoke test**
+
+`tests/smoke.test.ts`:
+
+```typescript
+import { describe, it, expect } from "vitest";
+
+describe("smoke", () => {
+  it("runs", () => {
+    expect(1 + 1).toBe(2);
+  });
+});
+```
+
+- [ ] **Step 3: Run tests**
+
+```bash
+cd ~/freelance-cal && npm test
+```
+
+Expected: 1 test passed.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add vitest.config.ts tests/smoke.test.ts
+git commit -m "test: configure vitest with smoke test"
+```
+
+---
+
+## Phase 1 — Domain (pure, no I/O)
+
+### Task 1.1: domain/convert.ts — hours → days
+
+**Files:**
+- Create: `src/domain/convert.ts`
+- Test: `tests/domain/convert.test.ts`
+
+- [ ] **Step 1: Write failing test**
+
+`tests/domain/convert.test.ts`:
+
+```typescript
+import { describe, it, expect } from "vitest";
+import { hoursToDays, secondsToHours } from "../../src/domain/convert.js";
+
+describe("hoursToDays", () => {
+  it("returns 0 for 0 hours", () => {
+    expect(hoursToDays(0, 7)).toBe(0);
+  });
+  it("returns 1 for 7 hours at 7h/day", () => {
+    expect(hoursToDays(7, 7)).toBe(1);
+  });
+  it("returns 0.5 for 3.5 hours at 7h/day", () => {
+    expect(hoursToDays(3.5, 7)).toBe(0.5);
+  });
+  it("returns 2 for 14 hours at 7h/day", () => {
+    expect(hoursToDays(14, 7)).toBe(2);
+  });
+  it("rounds to 2 decimals", () => {
+    expect(hoursToDays(2.3333333, 7)).toBeCloseTo(0.33, 2);
+  });
+  it("throws on hoursPerDay <= 0", () => {
+    expect(() => hoursToDays(7, 0)).toThrow();
+  });
+});
+
+describe("secondsToHours", () => {
+  it("converts seconds to hours", () => {
+    expect(secondsToHours(3600)).toBe(1);
+    expect(secondsToHours(12600)).toBe(3.5);
+    expect(secondsToHours(0)).toBe(0);
+  });
+});
+```
+
+- [ ] **Step 2: Run test (expect fail)**
+
+```bash
+npm test -- tests/domain/convert.test.ts
+```
+
+Expected: FAIL (module not found).
+
+- [ ] **Step 3: Implement**
+
+`src/domain/convert.ts`:
+
+```typescript
+export function secondsToHours(seconds: number): number {
+  return seconds / 3600;
+}
+
+export function hoursToDays(hours: number, hoursPerDay: number): number {
+  if (hoursPerDay <= 0) {
+    throw new Error(`hoursPerDay must be > 0, got ${hoursPerDay}`);
+  }
+  return Math.round((hours / hoursPerDay) * 100) / 100;
+}
+```
+
+- [ ] **Step 4: Run test (expect pass)**
+
+```bash
+npm test -- tests/domain/convert.test.ts
+```
+
+Expected: All pass.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/domain/convert.ts tests/domain/convert.test.ts
+git commit -m "feat(domain): hours/seconds → days conversion"
+```
+
+---
+
+### Task 1.2: domain/week.ts — ISO week math
+
+**Files:**
+- Create: `src/domain/week.ts`
+- Test: `tests/domain/week.test.ts`
+
+- [ ] **Step 1: Write failing test**
+
+`tests/domain/week.test.ts`:
+
+```typescript
+import { describe, it, expect } from "vitest";
+import {
+  isoWeekOf,
+  weekRange,
+  monthRange,
+  isWeekend,
+  formatISODate,
+} from "../../src/domain/week.js";
+
+describe("isoWeekOf", () => {
+  it("returns 1 for Jan 4 (always week 1)", () => {
+    expect(isoWeekOf(new Date("2026-01-04T12:00:00Z"))).toEqual({
+      year: 2026,
+      week: 1,
+    });
+  });
+  it("returns 53 for late Dec 2026 if applicable", () => {
+    // 2026-12-28 is a Monday → ISO week 53 of 2026
+    expect(isoWeekOf(new Date("2026-12-28T12:00:00Z"))).toEqual({
+      year: 2026,
+      week: 53,
+    });
+  });
+  it("handles year boundary (Jan 1 2023 = week 52 of 2022)", () => {
+    expect(isoWeekOf(new Date("2023-01-01T12:00:00Z"))).toEqual({
+      year: 2022,
+      week: 52,
+    });
+  });
+});
+
+describe("weekRange", () => {
+  it("returns Mon 00:00 → Sun 23:59:59.999 for a Wed input (local TZ)", () => {
+    const range = weekRange(new Date("2026-05-13T15:00:00"));
+    expect(formatISODate(range.start)).toBe("2026-05-11"); // Mon
+    expect(formatISODate(range.end)).toBe("2026-05-17");   // Sun
+  });
+});
+
+describe("monthRange", () => {
+  it("returns first → last day of the month", () => {
+    const range = monthRange(2026, 5); // May 2026
+    expect(formatISODate(range.start)).toBe("2026-05-01");
+    expect(formatISODate(range.end)).toBe("2026-05-31");
+  });
+  it("handles February in a leap year", () => {
+    const range = monthRange(2028, 2);
+    expect(formatISODate(range.end)).toBe("2028-02-29");
+  });
+});
+
+describe("isWeekend", () => {
+  it("true for Sat and Sun", () => {
+    expect(isWeekend(new Date("2026-05-16T12:00:00"))).toBe(true); // Sat
+    expect(isWeekend(new Date("2026-05-17T12:00:00"))).toBe(true); // Sun
+  });
+  it("false for Mon-Fri", () => {
+    expect(isWeekend(new Date("2026-05-13T12:00:00"))).toBe(false); // Wed
+  });
+});
+```
+
+- [ ] **Step 2: Run test (expect fail)**
+
+```bash
+npm test -- tests/domain/week.test.ts
+```
+
+Expected: FAIL.
+
+- [ ] **Step 3: Implement**
+
+`src/domain/week.ts`:
+
+```typescript
+export type DateRange = { start: Date; end: Date };
+
+export function formatISODate(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+export function isWeekend(d: Date): boolean {
+  const day = d.getDay(); // 0 = Sun
+  return day === 0 || day === 6;
+}
+
+export function isoWeekOf(d: Date): { year: number; week: number } {
+  // Algorithm: ISO 8601 week-numbering year.
+  // Copy date, set to nearest Thursday: current date + 4 - current day number.
+  const target = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayNr = (target.getUTCDay() + 6) % 7; // Mon = 0
+  target.setUTCDate(target.getUTCDate() - dayNr + 3);
+  const firstThursday = new Date(Date.UTC(target.getUTCFullYear(), 0, 4));
+  const firstThursdayDayNr = (firstThursday.getUTCDay() + 6) % 7;
+  firstThursday.setUTCDate(firstThursday.getUTCDate() - firstThursdayDayNr + 3);
+  const diff = target.getTime() - firstThursday.getTime();
+  const week = 1 + Math.round(diff / (7 * 24 * 60 * 60 * 1000));
+  return { year: target.getUTCFullYear(), week };
+}
+
+export function weekRange(d: Date): DateRange {
+  const day = (d.getDay() + 6) % 7; // Mon = 0
+  const start = new Date(d.getFullYear(), d.getMonth(), d.getDate() - day, 0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  end.setHours(23, 59, 59, 999);
+  return { start, end };
+}
+
+export function monthRange(year: number, month1to12: number): DateRange {
+  const start = new Date(year, month1to12 - 1, 1, 0, 0, 0, 0);
+  const end = new Date(year, month1to12, 0, 23, 59, 59, 999); // day 0 of next month
+  return { start, end };
+}
+
+export function eachDayInRange(range: DateRange): Date[] {
+  const days: Date[] = [];
+  const cur = new Date(range.start);
+  while (cur <= range.end) {
+    days.push(new Date(cur));
+    cur.setDate(cur.getDate() + 1);
+  }
+  return days;
+}
+```
+
+- [ ] **Step 4: Run test (expect pass)**
+
+```bash
+npm test -- tests/domain/week.test.ts
+```
+
+Expected: All pass.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/domain/week.ts tests/domain/week.test.ts
+git commit -m "feat(domain): ISO week + date range helpers"
+```
+
+---
+
+### Task 1.3: domain/holidays.ts — French holidays wrapper
+
+**Files:**
+- Create: `src/domain/holidays.ts`
+- Test: `tests/domain/holidays.test.ts`
+
+- [ ] **Step 1: Write failing test**
+
+`tests/domain/holidays.test.ts`:
+
+```typescript
+import { describe, it, expect } from "vitest";
+import { holidaysForYear, isHoliday, holidayName } from "../../src/domain/holidays.js";
+
+describe("holidaysForYear (FR)", () => {
+  it("contains Bastille Day on July 14", () => {
+    const map = holidaysForYear(2026, "FR");
+    expect(map.has("2026-07-14")).toBe(true);
+  });
+  it("contains Christmas", () => {
+    const map = holidaysForYear(2026, "FR");
+    expect(map.has("2026-12-25")).toBe(true);
+  });
+  it("contains Easter Monday (mobile holiday)", () => {
+    // 2026 Easter is April 5 → Easter Monday April 6
+    const map = holidaysForYear(2026, "FR");
+    expect(map.has("2026-04-06")).toBe(true);
+  });
+});
+
+describe("isHoliday / holidayName", () => {
+  it("true for July 14 2026", () => {
+    expect(isHoliday(new Date("2026-07-14T12:00:00"), "FR")).toBe(true);
+    expect(holidayName(new Date("2026-07-14T12:00:00"), "FR")).toMatch(/national|bastille|14/i);
+  });
+  it("false for a random Tuesday", () => {
+    expect(isHoliday(new Date("2026-05-12T12:00:00"), "FR")).toBe(false);
+  });
+});
+```
+
+- [ ] **Step 2: Run test (expect fail)**
+
+```bash
+npm test -- tests/domain/holidays.test.ts
+```
+
+Expected: FAIL.
+
+- [ ] **Step 3: Implement**
+
+`src/domain/holidays.ts`:
+
+```typescript
+import Holidays from "date-holidays";
+import { formatISODate } from "./week.js";
+
+const cache = new Map<string, Map<string, string>>();
+
+export function holidaysForYear(year: number, region: string): Map<string, string> {
+  const key = `${region}-${year}`;
+  const cached = cache.get(key);
+  if (cached) return cached;
+
+  const hd = new Holidays(region);
+  const list = hd.getHolidays(year) ?? [];
+  const map = new Map<string, string>();
+  for (const h of list) {
+    if (h.type !== "public") continue;
+    const d = new Date(h.date);
+    map.set(formatISODate(d), h.name);
+  }
+  cache.set(key, map);
+  return map;
+}
+
+export function isHoliday(d: Date, region: string): boolean {
+  return holidaysForYear(d.getFullYear(), region).has(formatISODate(d));
+}
+
+export function holidayName(d: Date, region: string): string | undefined {
+  return holidaysForYear(d.getFullYear(), region).get(formatISODate(d));
+}
+```
+
+- [ ] **Step 4: Run test (expect pass)**
+
+```bash
+npm test -- tests/domain/holidays.test.ts
+```
+
+Expected: All pass.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/domain/holidays.ts tests/domain/holidays.test.ts
+git commit -m "feat(domain): French public holidays via date-holidays"
+```
+
+---
+
+### Task 1.4: domain/aggregate.ts — entries → AggregatedDay[]
+
+**Files:**
+- Create: `src/domain/aggregate.ts`
+- Test: `tests/domain/aggregate.test.ts`
+
+- [ ] **Step 1: Write failing test**
+
+`tests/domain/aggregate.test.ts`:
+
+```typescript
+import { describe, it, expect } from "vitest";
+import { aggregateEntries } from "../../src/domain/aggregate.js";
+import type { TimeEntry } from "../../src/solidtime/types.js";
+import type { Client } from "../../src/config/schema.js";
+
+const clients: Client[] = [
+  { id: "acme", solidtimeProjectIds: ["p1"], label: "Acme", color: "blue", targetDaysPerWeek: 3 },
+  { id: "globex", solidtimeProjectIds: ["p2"], label: "Globex", color: "green", targetDaysPerWeek: 2 },
+];
+
+function entry(start: string, durationSec: number, projectId: string): TimeEntry {
+  const startDate = new Date(start);
+  const endDate = new Date(startDate.getTime() + durationSec * 1000);
+  return {
+    id: Math.random().toString(),
+    start: startDate.toISOString(),
+    end: endDate.toISOString(),
+    duration: durationSec,
+    projectId,
+    description: "",
+    billable: true,
+  };
+}
+
+describe("aggregateEntries", () => {
+  const range = {
+    start: new Date(2026, 4, 11), // Mon May 11 2026
+    end: new Date(2026, 4, 17, 23, 59, 59, 999),
+  };
+
+  it("buckets one full day on the right client", () => {
+    const entries = [entry("2026-05-11T08:00:00", 7 * 3600, "p1")];
+    const out = aggregateEntries(entries, range, clients, { hoursPerDay: 7, holidaysRegion: "FR" });
+    expect(out).toHaveLength(7);
+    const mon = out[0];
+    expect(mon.date).toBe("2026-05-11");
+    expect(mon.perClient.get("acme")).toBe(1);
+    expect(mon.totalDays).toBe(1);
+    expect(mon.dominantClient).toBe("acme");
+    expect(mon.isMixed).toBe(false);
+  });
+
+  it("marks mixed when ≥2 clients on the same day", () => {
+    const entries = [
+      entry("2026-05-13T08:00:00", 3.5 * 3600, "p1"),
+      entry("2026-05-13T14:00:00", 3.5 * 3600, "p2"),
+    ];
+    const out = aggregateEntries(entries, range, clients, { hoursPerDay: 7, holidaysRegion: "FR" });
+    const wed = out.find((d) => d.date === "2026-05-13")!;
+    expect(wed.perClient.get("acme")).toBe(0.5);
+    expect(wed.perClient.get("globex")).toBe(0.5);
+    expect(wed.isMixed).toBe(true);
+    expect(wed.totalDays).toBe(1);
+  });
+
+  it("marks weekends", () => {
+    const out = aggregateEntries([], range, clients, { hoursPerDay: 7, holidaysRegion: "FR" });
+    const sat = out.find((d) => d.date === "2026-05-16")!;
+    expect(sat.isWeekend).toBe(true);
+  });
+
+  it("unmapped project goes to 'Autres'", () => {
+    const entries = [entry("2026-05-12T08:00:00", 7 * 3600, "p_unknown")];
+    const out = aggregateEntries(entries, range, clients, { hoursPerDay: 7, holidaysRegion: "FR" });
+    const tue = out.find((d) => d.date === "2026-05-12")!;
+    expect(tue.perClient.get("__others")).toBe(1);
+    expect(tue.dominantClient).toBe("__others");
+  });
+
+  it("sums multiple entries for same project on same day", () => {
+    const entries = [
+      entry("2026-05-11T08:00:00", 3.5 * 3600, "p1"),
+      entry("2026-05-11T13:00:00", 3.5 * 3600, "p1"),
+    ];
+    const out = aggregateEntries(entries, range, clients, { hoursPerDay: 7, holidaysRegion: "FR" });
+    expect(out[0].perClient.get("acme")).toBe(1);
+  });
+
+  it("running entry (end null) is ignored", () => {
+    const e: TimeEntry = {
+      id: "x",
+      start: "2026-05-11T08:00:00.000Z",
+      end: null,
+      duration: null,
+      projectId: "p1",
+      description: "",
+      billable: true,
+    };
+    const out = aggregateEntries([e], range, clients, { hoursPerDay: 7, holidaysRegion: "FR" });
+    expect(out[0].totalDays).toBe(0);
+  });
+});
+```
+
+- [ ] **Step 2: Run test (expect fail)**
+
+```bash
+npm test -- tests/domain/aggregate.test.ts
+```
+
+Expected: FAIL.
+
+- [ ] **Step 3: Implement**
+
+`src/domain/aggregate.ts`:
+
+```typescript
+import type { TimeEntry } from "../solidtime/types.js";
+import type { Client, ClientId } from "../config/schema.js";
+import { hoursToDays, secondsToHours } from "./convert.js";
+import { formatISODate, isWeekend, eachDayInRange, type DateRange } from "./week.js";
+import { isHoliday, holidayName } from "./holidays.js";
+
+export const OTHERS_ID = "__others" as const;
+
+export type AggregatedDay = {
+  date: string;
+  weekday: number; // 0 = Mon
+  isWeekend: boolean;
+  isHoliday: boolean;
+  holidayName?: string;
+  perClient: Map<ClientId | typeof OTHERS_ID, number>;
+  totalDays: number;
+  dominantClient?: ClientId | typeof OTHERS_ID;
+  isMixed: boolean;
+};
+
+export type AggregateOptions = {
+  hoursPerDay: number;
+  holidaysRegion: string;
+};
+
+export function aggregateEntries(
+  entries: TimeEntry[],
+  range: DateRange,
+  clients: Client[],
+  opts: AggregateOptions,
+): AggregatedDay[] {
+  const projectToClient = new Map<string, ClientId>();
+  for (const c of clients) {
+    for (const pid of c.solidtimeProjectIds) projectToClient.set(pid, c.id);
+  }
+
+  // Hours per (date, clientId)
+  const byDay = new Map<string, Map<string, number>>();
+  for (const e of entries) {
+    if (e.duration == null || e.end == null) continue;
+    const date = formatISODate(new Date(e.start));
+    const hours = secondsToHours(e.duration);
+    const clientId = projectToClient.get(e.projectId) ?? OTHERS_ID;
+    let row = byDay.get(date);
+    if (!row) {
+      row = new Map();
+      byDay.set(date, row);
+    }
+    row.set(clientId, (row.get(clientId) ?? 0) + hours);
+  }
+
+  return eachDayInRange(range).map((d) => {
+    const date = formatISODate(d);
+    const weekday = (d.getDay() + 6) % 7;
+    const hRow = byDay.get(date) ?? new Map<string, number>();
+    const perClient = new Map<string, number>();
+    let total = 0;
+    for (const [cid, hours] of hRow) {
+      const days = hoursToDays(hours, opts.hoursPerDay);
+      perClient.set(cid, days);
+      total += days;
+    }
+    total = Math.round(total * 100) / 100;
+
+    let dominant: string | undefined;
+    let maxVal = 0;
+    for (const [cid, days] of perClient) {
+      if (days > maxVal) {
+        maxVal = days;
+        dominant = cid;
+      }
+    }
+    const nonZero = [...perClient.values()].filter((v) => v > 0).length;
+
+    return {
+      date,
+      weekday,
+      isWeekend: isWeekend(d),
+      isHoliday: isHoliday(d, opts.holidaysRegion),
+      holidayName: holidayName(d, opts.holidaysRegion),
+      perClient,
+      totalDays: total,
+      dominantClient: dominant,
+      isMixed: nonZero >= 2,
+    };
+  });
+}
+
+export function sumPerClient(days: AggregatedDay[]): Map<string, number> {
+  const sum = new Map<string, number>();
+  for (const d of days) {
+    for (const [cid, v] of d.perClient) {
+      sum.set(cid, Math.round(((sum.get(cid) ?? 0) + v) * 100) / 100);
+    }
+  }
+  return sum;
+}
+```
+
+- [ ] **Step 4: Run test (expect pass)**
+
+```bash
+npm test -- tests/domain/aggregate.test.ts
+```
+
+Expected: All pass. (Note: `Client` and `TimeEntry` types need to exist — see Task 2.1 and Task 3.1. If running tests out of order, do those first.)
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/domain/aggregate.ts tests/domain/aggregate.test.ts
+git commit -m "feat(domain): aggregate Solidtime entries into AggregatedDay[]"
+```
+
+---
+
+## Phase 2 — Config & storage
+
+### Task 2.1: config/store.ts — load/save JSON config
+
+**Files:**
+- Create: `src/config/store.ts`
+- Test: `tests/config/store.test.ts`
+
+- [ ] **Step 1: Write failing test**
+
+`tests/config/store.test.ts`:
+
+```typescript
+import { describe, it, expect, beforeEach } from "vitest";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { loadConfig, saveConfig, configPath } from "../../src/config/store.js";
+import { defaultConfig } from "../../src/config/schema.js";
+
+let dir: string;
+
+beforeEach(() => {
+  dir = mkdtempSync(join(tmpdir(), "fcal-cfg-"));
+});
+
+describe("config store", () => {
+  it("returns null when file absent", async () => {
+    const cfg = await loadConfig(configPath(dir));
+    expect(cfg).toBeNull();
+  });
+
+  it("round-trips save/load", async () => {
+    const path = configPath(dir);
+    const cfg = { ...defaultConfig("org-1"), clients: [] };
+    await saveConfig(path, cfg);
+    const loaded = await loadConfig(path);
+    expect(loaded).toEqual(cfg);
+  });
+
+  it("creates parent directory if missing", async () => {
+    const path = configPath(join(dir, "nested", "deep"));
+    const cfg = { ...defaultConfig("org-1"), clients: [] };
+    await saveConfig(path, cfg);
+    const loaded = await loadConfig(path);
+    expect(loaded?.solidtime.organizationId).toBe("org-1");
+  });
+
+  afterEach: rmSync(dir, { recursive: true, force: true });
+});
+```
+
+(Fix the `afterEach` syntax — actually use proper hook):
+
+```typescript
+import { afterEach } from "vitest";
+afterEach(() => rmSync(dir, { recursive: true, force: true }));
+```
+
+So the final file is:
+
+```typescript
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { loadConfig, saveConfig, configPath } from "../../src/config/store.js";
+import { defaultConfig } from "../../src/config/schema.js";
+
+let dir: string;
+beforeEach(() => { dir = mkdtempSync(join(tmpdir(), "fcal-cfg-")); });
+afterEach(() => rmSync(dir, { recursive: true, force: true }));
+
+describe("config store", () => {
+  it("returns null when file absent", async () => {
+    expect(await loadConfig(configPath(dir))).toBeNull();
+  });
+  it("round-trips save/load", async () => {
+    const path = configPath(dir);
+    const cfg = { ...defaultConfig("org-1"), clients: [] };
+    await saveConfig(path, cfg);
+    expect(await loadConfig(path)).toEqual(cfg);
+  });
+  it("creates parent directory if missing", async () => {
+    const path = configPath(join(dir, "nested", "deep"));
+    const cfg = { ...defaultConfig("org-1"), clients: [] };
+    await saveConfig(path, cfg);
+    expect((await loadConfig(path))?.solidtime.organizationId).toBe("org-1");
+  });
+});
+```
+
+- [ ] **Step 2: Run test (expect fail)**
+
+```bash
+npm test -- tests/config/store.test.ts
+```
+
+Expected: FAIL.
+
+- [ ] **Step 3: Implement**
+
+`src/config/store.ts`:
+
+```typescript
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
+import { homedir } from "node:os";
+import type { Config } from "./schema.js";
+import { CONFIG_VERSION } from "./schema.js";
+
+export function defaultConfigDir(): string {
+  return process.env.FREELANCE_CAL_DIR ?? join(homedir(), ".config", "freelance-cal");
+}
+
+export function configPath(dir: string = defaultConfigDir()): string {
+  return join(dir, "config.json");
+}
+
+export async function loadConfig(path: string = configPath()): Promise<Config | null> {
+  try {
+    const raw = await readFile(path, "utf8");
+    const parsed = JSON.parse(raw) as Config;
+    if (parsed.version !== CONFIG_VERSION) {
+      throw new Error(`Unsupported config version ${parsed.version}, expected ${CONFIG_VERSION}`);
+    }
+    return parsed;
+  } catch (e: unknown) {
+    if ((e as NodeJS.ErrnoException).code === "ENOENT") return null;
+    throw e;
+  }
+}
+
+export async function saveConfig(path: string, cfg: Config): Promise<void> {
+  await mkdir(dirname(path), { recursive: true });
+  await writeFile(path, JSON.stringify(cfg, null, 2) + "\n", { mode: 0o600 });
+}
+```
+
+- [ ] **Step 4: Run test (expect pass)**
+
+```bash
+npm test -- tests/config/store.test.ts
+```
+
+Expected: All pass.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/config/store.ts tests/config/store.test.ts
+git commit -m "feat(config): persistent JSON config store"
+```
+
+---
+
+### Task 2.2: config/keychain.ts — token storage with fallback
+
+**Files:**
+- Create: `src/config/keychain.ts`
+
+- [ ] **Step 1: Implement (no unit test — wraps OS Keychain; covered by integration in status command)**
+
+`src/config/keychain.ts`:
+
+```typescript
+import { mkdir, readFile, writeFile, chmod } from "node:fs/promises";
+import { dirname, join } from "node:path";
+import { defaultConfigDir } from "./store.js";
+
+const SERVICE = "freelance-cal";
+const ACCOUNT = "solidtime-token";
+const ENV_VAR = "FREELANCE_SOLIDTIME_TOKEN";
+
+type KeytarLike = {
+  setPassword(service: string, account: string, password: string): Promise<void>;
+  getPassword(service: string, account: string): Promise<string | null>;
+  deletePassword(service: string, account: string): Promise<boolean>;
+};
+
+let keytarMod: KeytarLike | null | undefined;
+
+async function loadKeytar(): Promise<KeytarLike | null> {
+  if (keytarMod !== undefined) return keytarMod;
+  try {
+    const mod = await import("keytar");
+    keytarMod = mod.default as KeytarLike;
+  } catch {
+    keytarMod = null;
+  }
+  return keytarMod;
+}
+
+function fallbackTokenPath(): string {
+  return join(defaultConfigDir(), "token");
+}
+
+export async function getToken(): Promise<string | null> {
+  const envToken = process.env[ENV_VAR];
+  if (envToken && envToken.length > 0) return envToken;
+
+  const kt = await loadKeytar();
+  if (kt) {
+    try {
+      const tok = await kt.getPassword(SERVICE, ACCOUNT);
+      if (tok) return tok;
+    } catch {
+      // fall through to file
+    }
+  }
+
+  try {
+    const tok = (await readFile(fallbackTokenPath(), "utf8")).trim();
+    return tok.length > 0 ? tok : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function setToken(token: string): Promise<{ backend: "keychain" | "file" }> {
+  const kt = await loadKeytar();
+  if (kt) {
+    try {
+      await kt.setPassword(SERVICE, ACCOUNT, token);
+      return { backend: "keychain" };
+    } catch {
+      // fall through
+    }
+  }
+  const path = fallbackTokenPath();
+  await mkdir(dirname(path), { recursive: true });
+  await writeFile(path, token, { mode: 0o600 });
+  await chmod(path, 0o600);
+  return { backend: "file" };
+}
+
+export async function deleteToken(): Promise<void> {
+  const kt = await loadKeytar();
+  if (kt) {
+    try { await kt.deletePassword(SERVICE, ACCOUNT); } catch { /* ignore */ }
+  }
+  try {
+    const { unlink } = await import("node:fs/promises");
+    await unlink(fallbackTokenPath());
+  } catch { /* ignore */ }
+}
+```
+
+- [ ] **Step 2: Commit**
+
+```bash
+git add src/config/keychain.ts
+git commit -m "feat(config): token storage via Keychain with env+file fallback"
+```
+
+---
+
+### Task 2.3: cache/store.ts — entries cache with TTL
+
+**Files:**
+- Create: `src/cache/store.ts`
+- Test: `tests/cache/store.test.ts`
+
+- [ ] **Step 1: Write failing test**
+
+`tests/cache/store.test.ts`:
+
+```typescript
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { readCache, writeCache, isFresh, covers } from "../../src/cache/store.js";
+
+let dir: string;
+beforeEach(() => { dir = mkdtempSync(join(tmpdir(), "fcal-cache-")); });
+afterEach(() => rmSync(dir, { recursive: true, force: true }));
+
+describe("cache store", () => {
+  it("returns null if missing", async () => {
+    expect(await readCache(join(dir, "c.json"))).toBeNull();
+  });
+
+  it("round-trips", async () => {
+    const path = join(dir, "c.json");
+    const payload = {
+      version: 1 as const,
+      fetchedAt: "2026-05-13T10:00:00Z",
+      windowFrom: "2026-02-13",
+      windowTo: "2026-05-13",
+      entries: [],
+    };
+    await writeCache(path, payload);
+    expect(await readCache(path)).toEqual(payload);
+  });
+
+  it("isFresh returns false past TTL", () => {
+    const cache = {
+      version: 1 as const,
+      fetchedAt: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
+      windowFrom: "2026-01-01",
+      windowTo: "2026-05-13",
+      entries: [],
+    };
+    expect(isFresh(cache, 5 * 60 * 1000)).toBe(false);
+  });
+
+  it("isFresh returns true within TTL", () => {
+    const cache = {
+      version: 1 as const,
+      fetchedAt: new Date(Date.now() - 60 * 1000).toISOString(),
+      windowFrom: "2026-01-01",
+      windowTo: "2026-05-13",
+      entries: [],
+    };
+    expect(isFresh(cache, 5 * 60 * 1000)).toBe(true);
+  });
+
+  it("covers checks window inclusion", () => {
+    const cache = {
+      version: 1 as const,
+      fetchedAt: new Date().toISOString(),
+      windowFrom: "2026-02-01",
+      windowTo: "2026-05-31",
+      entries: [],
+    };
+    expect(covers(cache, "2026-03-01", "2026-04-01")).toBe(true);
+    expect(covers(cache, "2026-01-15", "2026-04-01")).toBe(false);
+  });
+});
+```
+
+- [ ] **Step 2: Run test (expect fail)**
+
+```bash
+npm test -- tests/cache/store.test.ts
+```
+
+Expected: FAIL.
+
+- [ ] **Step 3: Implement**
+
+`src/cache/store.ts`:
+
+```typescript
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
+import { defaultConfigDir } from "../config/store.js";
+import type { TimeEntry } from "../solidtime/types.js";
+
+export const CACHE_VERSION = 1 as const;
+export const DEFAULT_TTL_MS = 5 * 60 * 1000;
+
+export type Cache = {
+  version: typeof CACHE_VERSION;
+  fetchedAt: string;     // ISO timestamp
+  windowFrom: string;    // YYYY-MM-DD
+  windowTo: string;      // YYYY-MM-DD
+  entries: TimeEntry[];
+};
+
+export function defaultCachePath(): string {
+  return join(defaultConfigDir(), "cache.json");
+}
+
+export async function readCache(path: string = defaultCachePath()): Promise<Cache | null> {
+  try {
+    const raw = await readFile(path, "utf8");
+    const parsed = JSON.parse(raw) as Cache;
+    if (parsed.version !== CACHE_VERSION) return null;
+    return parsed;
+  } catch (e: unknown) {
+    if ((e as NodeJS.ErrnoException).code === "ENOENT") return null;
+    return null;
+  }
+}
+
+export async function writeCache(path: string, cache: Cache): Promise<void> {
+  await mkdir(dirname(path), { recursive: true });
+  await writeFile(path, JSON.stringify(cache), { mode: 0o600 });
+}
+
+export function isFresh(cache: Cache, ttlMs: number = DEFAULT_TTL_MS): boolean {
+  const age = Date.now() - new Date(cache.fetchedAt).getTime();
+  return age >= 0 && age < ttlMs;
+}
+
+export function covers(cache: Cache, fromIso: string, toIso: string): boolean {
+  return cache.windowFrom <= fromIso && cache.windowTo >= toIso;
+}
+```
+
+- [ ] **Step 4: Run test (expect pass)**
+
+```bash
+npm test -- tests/cache/store.test.ts
+```
+
+Expected: All pass.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/cache/store.ts tests/cache/store.test.ts
+git commit -m "feat(cache): TTL-aware entries cache with window coverage check"
+```
+
+---
+
+## Phase 3 — Solidtime client
+
+### Task 3.1: solidtime/client.ts — fetch entries, projects, me
+
+**Files:**
+- Create: `src/solidtime/client.ts`
+- Test: `tests/solidtime/client.test.ts`
+
+> **Note on API endpoints:** Solidtime exposes a Laravel/Sanctum REST API. The endpoint paths below are the most plausible based on standard REST conventions and Solidtime's public docs at the time of writing. If a curl test in Task 6.3 reveals a different path, adjust this client and its tests accordingly — the contract that matters is `fetchTimeEntries(from, to)` returning `TimeEntry[]`.
+
+- [ ] **Step 1: Write failing test (with fetch mock)**
+
+`tests/solidtime/client.test.ts`:
+
+```typescript
+import { describe, it, expect, vi, afterEach } from "vitest";
+import { createSolidtimeClient } from "../../src/solidtime/client.js";
+
+const ORG = "org-uuid";
+const BASE = "https://app.solidtime.io/api";
+
+afterEach(() => vi.unstubAllGlobals());
+
+function stubFetch(handler: (url: string, init?: RequestInit) => Response | Promise<Response>) {
+  vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo, init?: RequestInit) => {
+    const url = typeof input === "string" ? input : input.toString();
+    return await handler(url, init);
+  }));
+}
+
+describe("solidtime client", () => {
+  it("getMe sends bearer token and parses payload", async () => {
+    stubFetch((url, init) => {
+      expect(url).toContain("/users/me");
+      expect((init?.headers as Record<string, string>).Authorization).toBe("Bearer tok");
+      return new Response(JSON.stringify({ data: { id: "u1", name: "Rashad", email: "x@y.z" } }), { status: 200 });
+    });
+    const c = createSolidtimeClient({ baseUrl: BASE, token: "tok", organizationId: ORG });
+    const me = await c.getMe();
+    expect(me.id).toBe("u1");
+  });
+
+  it("listProjects returns array", async () => {
+    stubFetch((url) => {
+      expect(url).toContain(`/organizations/${ORG}/projects`);
+      return new Response(JSON.stringify({ data: [
+        { id: "p1", name: "Acme website" },
+        { id: "p2", name: "Globex CRM" },
+      ]}), { status: 200 });
+    });
+    const c = createSolidtimeClient({ baseUrl: BASE, token: "tok", organizationId: ORG });
+    const projects = await c.listProjects();
+    expect(projects).toHaveLength(2);
+    expect(projects[0].id).toBe("p1");
+  });
+
+  it("fetchTimeEntries normalises to camelCase", async () => {
+    stubFetch((url) => {
+      expect(url).toContain(`/organizations/${ORG}/time-entries`);
+      expect(url).toContain("start=2026-05-01");
+      expect(url).toContain("end=2026-05-31");
+      return new Response(JSON.stringify({ data: [
+        { id: "e1", start: "2026-05-13T08:00:00Z", end: "2026-05-13T15:00:00Z",
+          duration: 25200, project_id: "p1", description: "dev", billable: true },
+      ]}), { status: 200 });
+    });
+    const c = createSolidtimeClient({ baseUrl: BASE, token: "tok", organizationId: ORG });
+    const entries = await c.fetchTimeEntries("2026-05-01", "2026-05-31");
+    expect(entries[0].projectId).toBe("p1");
+    expect(entries[0].duration).toBe(25200);
+  });
+
+  it("throws on 401", async () => {
+    stubFetch(() => new Response(JSON.stringify({ message: "unauthenticated" }), { status: 401 }));
+    const c = createSolidtimeClient({ baseUrl: BASE, token: "bad", organizationId: ORG });
+    await expect(c.getMe()).rejects.toThrow(/401|unauth/i);
+  });
+});
+```
+
+- [ ] **Step 2: Run test (expect fail)**
+
+```bash
+npm test -- tests/solidtime/client.test.ts
+```
+
+Expected: FAIL.
+
+- [ ] **Step 3: Implement**
+
+`src/solidtime/client.ts`:
+
+```typescript
+import type { SolidtimeProject, SolidtimeMe, TimeEntry } from "./types.js";
+
+export type SolidtimeClientOptions = {
+  baseUrl: string;
+  token: string;
+  organizationId: string;
+};
+
+export type SolidtimeClient = {
+  getMe(): Promise<SolidtimeMe>;
+  listOrganizations(): Promise<{ id: string; name: string }[]>;
+  listProjects(): Promise<SolidtimeProject[]>;
+  fetchTimeEntries(fromYmd: string, toYmd: string): Promise<TimeEntry[]>;
+};
+
+export function createSolidtimeClient(opts: SolidtimeClientOptions): SolidtimeClient {
+  async function req<T>(path: string): Promise<T> {
+    const url = `${opts.baseUrl}${path}`;
+    const res = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${opts.token}`,
+        Accept: "application/json",
+      },
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      throw new Error(`Solidtime ${res.status} on ${path}: ${body.slice(0, 200)}`);
+    }
+    const json = (await res.json()) as { data: T };
+    return json.data;
+  }
+
+  return {
+    async getMe() {
+      return req<SolidtimeMe>(`/v1/users/me`);
+    },
+    async listOrganizations() {
+      const memberships = await req<Array<{ organization: { id: string; name: string } }>>(
+        `/v1/users/me/memberships`,
+      );
+      return memberships.map((m) => m.organization);
+    },
+    async listProjects() {
+      return req<SolidtimeProject[]>(`/v1/organizations/${opts.organizationId}/projects`);
+    },
+    async fetchTimeEntries(fromYmd: string, toYmd: string) {
+      // start/end inclusive bounds, ISO date
+      const qs = new URLSearchParams({ start: fromYmd, end: toYmd, per_page: "1000" }).toString();
+      const raw = await req<Array<{
+        id: string; start: string; end: string | null; duration: number | null;
+        project_id: string; description?: string; billable?: boolean;
+      }>>(`/v1/organizations/${opts.organizationId}/time-entries?${qs}`);
+      return raw.map((e) => ({
+        id: e.id,
+        start: e.start,
+        end: e.end,
+        duration: e.duration,
+        projectId: e.project_id,
+        description: e.description ?? "",
+        billable: e.billable ?? true,
+      }));
+    },
+  };
+}
+```
+
+- [ ] **Step 4: Run test (expect pass)**
+
+```bash
+npm test -- tests/solidtime/client.test.ts
+```
+
+Expected: All pass.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/solidtime/client.ts tests/solidtime/client.test.ts
+git commit -m "feat(solidtime): client for me/projects/time-entries with bearer auth"
+```
+
+---
+
+## Phase 4 — Render (pure)
+
+### Task 4.1: render/palette.ts — colour resolution
+
+**Files:**
+- Create: `src/render/palette.ts`
+- Test: `tests/render/palette.test.ts`
+
+- [ ] **Step 1: Write failing test**
+
+`tests/render/palette.test.ts`:
+
+```typescript
+import { describe, it, expect } from "vitest";
+import { resolveColor, dim, accent } from "../../src/render/palette.js";
+
+describe("palette", () => {
+  it("blue resolves to a hex", () => {
+    expect(resolveColor("blue")).toMatch(/^#[0-9a-fA-F]{6}$/);
+  });
+  it("six distinct colours", () => {
+    const keys = ["blue", "green", "amber", "pink", "cyan", "purple"] as const;
+    const colours = new Set(keys.map(resolveColor));
+    expect(colours.size).toBe(6);
+  });
+  it("dim and accent return ANSI escapes (string with chars)", () => {
+    expect(dim("hello")).toContain("hello");
+    expect(accent("X")).toContain("X");
+  });
+});
+```
+
+- [ ] **Step 2: Run test (expect fail)**
+
+```bash
+npm test -- tests/render/palette.test.ts
+```
+
+Expected: FAIL.
+
+- [ ] **Step 3: Implement**
+
+`src/render/palette.ts`:
+
+```typescript
+import chalk from "chalk";
+import type { ColorKey } from "../config/schema.js";
+
+// Catppuccin-inspired palette (mocha)
+const PALETTE: Record<ColorKey, string> = {
+  blue:   "#89b4fa",
+  green:  "#a6e3a1",
+  amber:  "#f9e2af",
+  pink:   "#f5c2e7",
+  cyan:   "#94e2d5",
+  purple: "#cba6f7",
+};
+
+const FG_ON_COLOR = "#1e1e2e"; // dark text on the pastel bg
+const NEUTRAL_BG = "#313244";  // weekend / holiday bg
+const NEUTRAL_FG = "#6c7086";  // dim text
+
+export function resolveColor(key: ColorKey): string {
+  return PALETTE[key];
+}
+
+export function dim(s: string): string {
+  return chalk.hex(NEUTRAL_FG)(s);
+}
+
+export function accent(s: string): string {
+  return chalk.hex("#cdd6f4").bold(s);
+}
+
+export function clientCell(s: string, color: ColorKey): string {
+  return chalk.hex(FG_ON_COLOR).bgHex(PALETTE[color])(s);
+}
+
+export function neutralCell(s: string): string {
+  return chalk.hex(NEUTRAL_FG).bgHex(NEUTRAL_BG)(s);
+}
+
+export function emptyCell(s: string): string {
+  return chalk.hex(NEUTRAL_FG)(s);
+}
+
+export function barColor(s: string, color: ColorKey): string {
+  return chalk.hex(PALETTE[color])(s);
+}
+
+export function barTrack(s: string): string {
+  return chalk.hex(NEUTRAL_BG)(s);
+}
+```
+
+- [ ] **Step 4: Run test (expect pass)**
+
+```bash
+FORCE_COLOR=3 npm test -- tests/render/palette.test.ts
+```
+
+Expected: All pass. (Tests don't depend on actual ANSI emission, but FORCE_COLOR keeps chalk from stripping colour in CI.)
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/render/palette.ts tests/render/palette.test.ts
+git commit -m "feat(render): Catppuccin-inspired palette with cell helpers"
+```
+
+---
+
+### Task 4.2: render/box.ts — rounded box + separator helpers
+
+**Files:**
+- Create: `src/render/box.ts`
+- Test: `tests/render/box.test.ts`
+
+- [ ] **Step 1: Write failing test**
+
+`tests/render/box.test.ts`:
+
+```typescript
+import { describe, it, expect } from "vitest";
+import { roundedBox, sectionSeparator } from "../../src/render/box.js";
+import stripAnsi from "../helpers/stripAnsi.js";
+
+describe("roundedBox", () => {
+  it("wraps text in rounded corners", () => {
+    const out = stripAnsi(roundedBox("Hello", 20));
+    expect(out).toContain("╭");
+    expect(out).toContain("╮");
+    expect(out).toContain("╰");
+    expect(out).toContain("╯");
+    expect(out).toContain("Hello");
+  });
+  it("respects width", () => {
+    const out = stripAnsi(roundedBox("Hi", 10)).split("\n");
+    expect(out[0].length).toBe(10);
+  });
+});
+
+describe("sectionSeparator", () => {
+  it("renders title with dashes", () => {
+    const out = stripAnsi(sectionSeparator("Mois", 30));
+    expect(out).toContain("Mois");
+    expect(out).toMatch(/─+/);
+    expect(out.length).toBe(30);
+  });
+});
+```
+
+`tests/helpers/stripAnsi.ts`:
+
+```typescript
+const ANSI = /\[[0-9;]*m/g;
+export default function stripAnsi(s: string): string {
+  return s.replace(ANSI, "");
+}
+```
+
+- [ ] **Step 2: Run test (expect fail)**
+
+```bash
+npm test -- tests/render/box.test.ts
+```
+
+Expected: FAIL.
+
+- [ ] **Step 3: Implement**
+
+`src/render/box.ts`:
+
+```typescript
+import { dim, accent } from "./palette.js";
+
+export function roundedBox(content: string, width: number): string {
+  const inner = width - 4; // 2 corners + 2 spaces
+  const padded = content.length > inner ? content.slice(0, inner) : content.padEnd(inner, " ");
+  const top    = "╭" + "─".repeat(width - 2) + "╮";
+  const middle = "│ " + accent(padded) + " │";
+  const bot    = "╰" + "─".repeat(width - 2) + "╯";
+  return [dim(top), middle, dim(bot)].join("\n");
+}
+
+export function sectionSeparator(title: string, width: number): string {
+  const left = "── ";
+  const titleLen = title.length;
+  const remaining = width - left.length - titleLen - 1;
+  const right = " " + "─".repeat(Math.max(remaining, 0));
+  const raw = left + title + right;
+  return dim("──") + " " + accent(title) + " " + dim("─".repeat(Math.max(remaining, 0)));
+}
+```
+
+- [ ] **Step 4: Run test (expect pass)**
+
+```bash
+npm test -- tests/render/box.test.ts
+```
+
+Expected: All pass.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/render/box.ts tests/render/box.test.ts tests/helpers/stripAnsi.ts
+git commit -m "feat(render): rounded box and section separator helpers"
+```
+
+---
+
+### Task 4.3: render/bars.ts — smooth unicode progress bars
+
+**Files:**
+- Create: `src/render/bars.ts`
+- Test: `tests/render/bars.test.ts`
+
+- [ ] **Step 1: Write failing test**
+
+`tests/render/bars.test.ts`:
+
+```typescript
+import { describe, it, expect } from "vitest";
+import { progressBar } from "../../src/render/bars.js";
+import stripAnsi from "../helpers/stripAnsi.js";
+
+describe("progressBar", () => {
+  it("0% renders all empty blocks", () => {
+    const out = stripAnsi(progressBar(0, 10, 16, "blue"));
+    expect(out).toMatch(/^░{16}$/);
+  });
+  it("100% renders all full blocks", () => {
+    const out = stripAnsi(progressBar(10, 10, 16, "blue"));
+    expect(out).toMatch(/^█{16}$/);
+  });
+  it("50% renders 8 full blocks", () => {
+    const out = stripAnsi(progressBar(5, 10, 16, "blue"));
+    expect(out.startsWith("████████")).toBe(true);
+    expect(out.length).toBe(16);
+  });
+  it("clamps over 100%", () => {
+    const out = stripAnsi(progressBar(15, 10, 16, "blue"));
+    expect(out).toMatch(/^█{16}$/);
+  });
+  it("emits fractional block at boundary", () => {
+    const out = stripAnsi(progressBar(2.5, 10, 16, "blue"));
+    // 2.5/10 = 25% of 16 = 4 cells. 4.0 → no fractional.
+    // Use 2/10 = 20% of 16 = 3.2 → "███▎"
+    const out2 = stripAnsi(progressBar(2, 10, 16, "blue"));
+    expect(out2.startsWith("███")).toBe(true);
+  });
+});
+```
+
+- [ ] **Step 2: Run test (expect fail)**
+
+```bash
+npm test -- tests/render/bars.test.ts
+```
+
+Expected: FAIL.
+
+- [ ] **Step 3: Implement**
+
+`src/render/bars.ts`:
+
+```typescript
+import type { ColorKey } from "../config/schema.js";
+import { barColor, barTrack } from "./palette.js";
+
+const BLOCKS = [" ", "▏", "▎", "▍", "▌", "▋", "▊", "▉", "█"]; // 0..8 eighths
+
+export function progressBar(value: number, max: number, width: number, color: ColorKey): string {
+  const ratio = Math.max(0, Math.min(1, max === 0 ? 0 : value / max));
+  const totalEighths = Math.round(ratio * width * 8);
+  const fullCells = Math.floor(totalEighths / 8);
+  const remainder = totalEighths % 8;
+
+  let bar = "█".repeat(fullCells);
+  if (fullCells < width && remainder > 0) {
+    bar += BLOCKS[remainder];
+  }
+  const filledLen = [...bar].length;
+  const emptyLen = width - filledLen;
+
+  return barColor(bar, color) + barTrack("░".repeat(emptyLen));
+}
+```
+
+- [ ] **Step 4: Run test (expect pass)**
+
+```bash
+npm test -- tests/render/bars.test.ts
+```
+
+Expected: All pass.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/render/bars.ts tests/render/bars.test.ts
+git commit -m "feat(render): smooth unicode progress bars"
+```
+
+---
+
+### Task 4.4: render/calendar.ts — monthly heatmap grid
+
+**Files:**
+- Create: `src/render/calendar.ts`
+- Test: `tests/render/calendar.test.ts`
+
+- [ ] **Step 1: Write failing test (snapshot-style)**
+
+`tests/render/calendar.test.ts`:
+
+```typescript
+import { describe, it, expect } from "vitest";
+import { renderMonthlyCalendar } from "../../src/render/calendar.js";
+import type { AggregatedDay } from "../../src/domain/aggregate.js";
+import type { Client } from "../../src/config/schema.js";
+import stripAnsi from "../helpers/stripAnsi.js";
+
+const clients: Client[] = [
+  { id: "acme", solidtimeProjectIds: ["p1"], label: "Acme", color: "blue", targetDaysPerWeek: 3 },
+  { id: "globex", solidtimeProjectIds: ["p2"], label: "Globex", color: "green", targetDaysPerWeek: 2 },
+];
+
+function emptyDay(date: string, weekday: number, isWeekend: boolean): AggregatedDay {
+  return {
+    date, weekday, isWeekend, isHoliday: false,
+    perClient: new Map(), totalDays: 0, isMixed: false,
+  };
+}
+
+describe("renderMonthlyCalendar", () => {
+  it("renders a header with month and year", () => {
+    const days: AggregatedDay[] = [];
+    for (let d = 1; d <= 31; d++) {
+      const date = new Date(2026, 4, d);
+      days.push(emptyDay(`2026-05-${String(d).padStart(2, "0")}`, (date.getDay() + 6) % 7, [0,6].includes(date.getDay())));
+    }
+    const out = stripAnsi(renderMonthlyCalendar(2026, 5, days, clients));
+    expect(out).toContain("Mai 2026");
+    expect(out).toContain("Lun");
+    expect(out).toContain("Dim");
+  });
+
+  it("places day 1 under the correct weekday column", () => {
+    const days: AggregatedDay[] = [];
+    for (let d = 1; d <= 31; d++) {
+      const date = new Date(2026, 4, d);
+      days.push(emptyDay(`2026-05-${String(d).padStart(2, "0")}`, (date.getDay() + 6) % 7, [0,6].includes(date.getDay())));
+    }
+    const out = stripAnsi(renderMonthlyCalendar(2026, 5, days, clients));
+    // May 1 2026 is a Friday. The line containing " 1" should also contain " 2" (Sat) and " 3" (Sun).
+    const line = out.split("\n").find((l) => / 1 /.test(l) || / 1$/.test(l));
+    expect(line).toBeTruthy();
+    expect(line!).toMatch(/ 1.* 2.* 3/);
+  });
+
+  it("renders count of days worked in title (right side)", () => {
+    const days: AggregatedDay[] = [];
+    for (let d = 1; d <= 31; d++) {
+      const date = new Date(2026, 4, d);
+      const wd = (date.getDay() + 6) % 7;
+      const we = [0,6].includes(date.getDay());
+      const day = emptyDay(`2026-05-${String(d).padStart(2, "0")}`, wd, we);
+      if (!we && d <= 15) {
+        day.perClient.set("acme", 1);
+        day.totalDays = 1;
+        day.dominantClient = "acme";
+      }
+      days.push(day);
+    }
+    const out = stripAnsi(renderMonthlyCalendar(2026, 5, days, clients));
+    expect(out).toMatch(/11 \/ 21 jours|11\/21/);
+  });
+});
+```
+
+- [ ] **Step 2: Run test (expect fail)**
+
+```bash
+npm test -- tests/render/calendar.test.ts
+```
+
+Expected: FAIL.
+
+- [ ] **Step 3: Implement**
+
+`src/render/calendar.ts`:
+
+```typescript
+import type { AggregatedDay } from "../domain/aggregate.js";
+import { OTHERS_ID } from "../domain/aggregate.js";
+import type { Client } from "../config/schema.js";
+import { clientCell, neutralCell, emptyCell, accent, dim } from "./palette.js";
+import { roundedBox } from "./box.js";
+
+const MONTH_NAMES_FR = [
+  "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
+  "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre",
+];
+const WEEKDAY_HEADERS_FR = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
+const CAL_WIDTH = 60;
+
+export function renderMonthlyCalendar(
+  year: number,
+  month1to12: number,
+  days: AggregatedDay[],
+  clients: Client[],
+): string {
+  const monthName = MONTH_NAMES_FR[month1to12 - 1];
+  const businessDays = days.filter((d) => !d.isWeekend && !d.isHoliday).length;
+  const workedDays = days.filter((d) => d.totalDays > 0).length;
+  const title = `freelance · ${monthName} ${year}`;
+  const rightHud = `${workedDays} / ${businessDays} jours`;
+  const titlePadded = (title + " ".repeat(Math.max(1, CAL_WIDTH - 4 - title.length - rightHud.length)) + rightHud);
+
+  const header = roundedBox(titlePadded, CAL_WIDTH);
+
+  // Weekday headers
+  const headerLine =
+    "   " + WEEKDAY_HEADERS_FR.map((w) => dim(w.padStart(4, " "))).join("  ");
+
+  // Build a 7-column grid; pad before day-1 with blanks
+  const first = days[0];
+  const leading = first.weekday; // 0 = Mon
+  const cells: string[] = [];
+  for (let i = 0; i < leading; i++) cells.push("    ");
+  for (const d of days) cells.push(renderDayCell(d, clients));
+  while (cells.length % 7 !== 0) cells.push("    ");
+
+  const rows: string[] = [];
+  for (let i = 0; i < cells.length; i += 7) {
+    rows.push("   " + cells.slice(i, i + 7).join("  "));
+  }
+
+  return [header, "", headerLine, "", ...rows].join("\n");
+}
+
+function renderDayCell(d: AggregatedDay, clients: Client[]): string {
+  const num = String(parseInt(d.date.slice(-2), 10)).padStart(2, " ");
+  const text = ` ${num} `; // 4 chars wide
+
+  if (d.isWeekend || d.isHoliday) return neutralCell(text);
+  if (d.totalDays === 0) return emptyCell(text);
+
+  const dominantClient = clients.find((c) => c.id === d.dominantClient);
+  if (!dominantClient) return emptyCell(text); // unmapped / Autres
+  // Mixed day marker: replace trailing space with "·"
+  const display = d.isMixed ? ` ${num}·` : text;
+  return clientCell(display, dominantClient.color);
+}
+```
+
+- [ ] **Step 4: Run test (expect pass)**
+
+```bash
+FORCE_COLOR=3 npm test -- tests/render/calendar.test.ts
+```
+
+Expected: All pass.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/render/calendar.ts tests/render/calendar.test.ts
+git commit -m "feat(render): monthly heatmap calendar with truecolor day cells"
+```
+
+---
+
+### Task 4.5: render/summary.ts — month + week summary sections
+
+**Files:**
+- Create: `src/render/summary.ts`
+- Test: `tests/render/summary.test.ts`
+
+- [ ] **Step 1: Write failing test**
+
+`tests/render/summary.test.ts`:
+
+```typescript
+import { describe, it, expect } from "vitest";
+import { renderMonthSummary, renderWeekSummary } from "../../src/render/summary.js";
+import type { Client } from "../../src/config/schema.js";
+import stripAnsi from "../helpers/stripAnsi.js";
+
+const clients: Client[] = [
+  { id: "acme", solidtimeProjectIds: ["p1"], label: "Acme", color: "blue", targetDaysPerWeek: 3 },
+  { id: "globex", solidtimeProjectIds: ["p2"], label: "Globex", color: "green", targetDaysPerWeek: 2 },
+];
+
+describe("renderMonthSummary", () => {
+  it("prints label, days, bar and target for each client", () => {
+    const totals = new Map<string, number>([["acme", 8.5], ["globex", 6.0]]);
+    const targets = new Map<string, number>([["acme", 15], ["globex", 10]]);
+    const out = stripAnsi(renderMonthSummary(totals, targets, clients));
+    expect(out).toContain("Acme");
+    expect(out).toContain("8.5");
+    expect(out).toContain("/15");
+    expect(out).toContain("Globex");
+    expect(out).toContain("6.0");
+    expect(out).toContain("/10");
+  });
+});
+
+describe("renderWeekSummary", () => {
+  it("shows delta vs target per client", () => {
+    const week = new Map<string, number>([["acme", 2.5], ["globex", 1.5]]);
+    const out = stripAnsi(renderWeekSummary(week, clients, 20));
+    expect(out).toContain("Semaine");
+    expect(out).toContain("20");
+    expect(out).toContain("2.5");
+    expect(out).toContain("3.0");
+    expect(out).toMatch(/-0\.5|−0\.5/);
+  });
+});
+```
+
+- [ ] **Step 2: Run test (expect fail)**
+
+```bash
+npm test -- tests/render/summary.test.ts
+```
+
+Expected: FAIL.
+
+- [ ] **Step 3: Implement**
+
+`src/render/summary.ts`:
+
+```typescript
+import type { Client } from "../config/schema.js";
+import { sectionSeparator } from "./box.js";
+import { progressBar } from "./bars.js";
+import { accent, dim } from "./palette.js";
+
+const WIDTH = 60;
+
+export function renderMonthSummary(
+  totals: Map<string, number>,
+  targets: Map<string, number>,
+  clients: Client[],
+): string {
+  const lines: string[] = [sectionSeparator("Ce mois", WIDTH), ""];
+  for (const c of clients) {
+    const days = totals.get(c.id) ?? 0;
+    const target = targets.get(c.id) ?? 0;
+    const bar = progressBar(days, Math.max(target, 1), 16, c.color);
+    const pct = target > 0 ? `${Math.round((days / target) * 100)} %` : "—";
+    lines.push(
+      `   ${accent(c.label.padEnd(10))} ${days.toFixed(1).padStart(5)} j   ${bar}  ${dim(`/${target}`)}  ${dim(pct.padStart(5))}`,
+    );
+  }
+  return lines.join("\n");
+}
+
+export function renderWeekSummary(
+  week: Map<string, number>,
+  clients: Client[],
+  weekNumber: number,
+): string {
+  const lines: string[] = [sectionSeparator(`Semaine en cours (S${weekNumber})`, WIDTH), ""];
+  let total = 0;
+  for (const c of clients) {
+    const days = week.get(c.id) ?? 0;
+    total += days;
+    const tgt = c.targetDaysPerWeek;
+    const bar = progressBar(days, Math.max(tgt, 1), 16, c.color);
+    const delta = days - tgt;
+    const deltaStr =
+      delta === 0 ? dim("  ✓ ok ") :
+      delta < 0   ? dim(`−${Math.abs(delta).toFixed(1)}`) :
+                    accent(`+${delta.toFixed(1)}`);
+    lines.push(
+      `   ${accent(c.label.padEnd(10))} ${days.toFixed(1)} / ${tgt.toFixed(1)} j   ${bar}  ${deltaStr}`,
+    );
+  }
+  lines.push("", `   ${dim("Total semaine :")} ${accent(total.toFixed(1))} j`);
+  return lines.join("\n");
+}
+```
+
+- [ ] **Step 4: Run test (expect pass)**
+
+```bash
+FORCE_COLOR=3 npm test -- tests/render/summary.test.ts
+```
+
+Expected: All pass.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/render/summary.ts tests/render/summary.test.ts
+git commit -m "feat(render): month + week summary sections"
+```
+
+---
+
+## Phase 5 — Commands
+
+Each command receives the same `Context` (config + cache + client) and outputs to stdout.
+
+### Task 5.1: commands/today.ts — today + this week
+
+**Files:**
+- Create: `src/commands/context.ts`
+- Create: `src/commands/today.ts`
+- Test: `tests/commands/today.test.ts`
+
+- [ ] **Step 1: Implement shared Context**
+
+`src/commands/context.ts`:
+
+```typescript
+import type { Config } from "../config/schema.js";
+
+export type Context = {
+  config: Config;
+  now: Date; // injected for testability
+  fresh: boolean; // --fresh flag
+};
+```
+
+- [ ] **Step 2: Write failing test**
+
+`tests/commands/today.test.ts`:
+
+```typescript
+import { describe, it, expect, vi, afterEach } from "vitest";
+import { runToday } from "../../src/commands/today.js";
+import type { Config } from "../../src/config/schema.js";
+import stripAnsi from "../helpers/stripAnsi.js";
+
+afterEach(() => vi.restoreAllMocks());
+
+const cfg: Config = {
+  version: 1,
+  solidtime: { baseUrl: "https://app.solidtime.io/api", organizationId: "org" },
+  conversion: { hoursPerDay: 7 },
+  clients: [
+    { id: "acme", solidtimeProjectIds: ["p1"], label: "Acme", color: "blue", targetDaysPerWeek: 3 },
+  ],
+  locale: "fr-FR",
+  holidaysRegion: "FR",
+};
+
+describe("runToday", () => {
+  it("prints today and week sections using injected entries", async () => {
+    const logs: string[] = [];
+    const log = vi.spyOn(console, "log").mockImplementation((s: string) => { logs.push(s); });
+    await runToday({ config: cfg, now: new Date(2026, 4, 13, 10), fresh: false }, {
+      fetchEntries: async () => [
+        { id: "e1", start: "2026-05-13T08:00:00", end: "2026-05-13T15:00:00", duration: 7*3600, projectId: "p1", description: "", billable: true },
+      ],
+    });
+    const out = stripAnsi(logs.join("\n"));
+    expect(out).toContain("Aujourd'hui");
+    expect(out).toContain("Acme");
+    expect(out).toContain("Semaine");
+  });
+});
+```
+
+- [ ] **Step 3: Run test (expect fail)**
+
+```bash
+npm test -- tests/commands/today.test.ts
+```
+
+Expected: FAIL.
+
+- [ ] **Step 4: Implement**
+
+`src/commands/today.ts`:
+
+```typescript
+import type { Context } from "./context.js";
+import type { TimeEntry } from "../solidtime/types.js";
+import { aggregateEntries, sumPerClient } from "../domain/aggregate.js";
+import { weekRange, formatISODate, isoWeekOf } from "../domain/week.js";
+import { renderWeekSummary } from "../render/summary.js";
+import { sectionSeparator } from "../render/box.js";
+import { accent, dim } from "../render/palette.js";
+
+export type EntrySource = {
+  fetchEntries(fromYmd: string, toYmd: string): Promise<TimeEntry[]>;
+};
+
+export async function runToday(ctx: Context, src: EntrySource): Promise<void> {
+  const today = ctx.now;
+  const week = weekRange(today);
+  const entries = await src.fetchEntries(formatISODate(week.start), formatISODate(week.end));
+
+  const days = aggregateEntries(entries, week, ctx.config.clients, {
+    hoursPerDay: ctx.config.conversion.hoursPerDay,
+    holidaysRegion: ctx.config.holidaysRegion,
+  });
+
+  const todayIso = formatISODate(today);
+  const todayAgg = days.find((d) => d.date === todayIso);
+  const todaySum = todayAgg ? new Map(todayAgg.perClient) : new Map<string, number>();
+
+  console.log(sectionSeparator("Aujourd'hui", 60));
+  console.log();
+  if (todayAgg && todayAgg.totalDays > 0) {
+    for (const c of ctx.config.clients) {
+      const v = todaySum.get(c.id) ?? 0;
+      if (v > 0) console.log(`   ${accent(c.label.padEnd(10))} ${v.toFixed(2)} j`);
+    }
+    console.log(`   ${dim("Total :")} ${accent(todayAgg.totalDays.toFixed(2))} j`);
+  } else {
+    console.log(`   ${dim("Rien enregistré aujourd'hui.")}`);
+  }
+  console.log();
+
+  const weekTotals = sumPerClient(days);
+  const { week: wk } = isoWeekOf(today);
+  console.log(renderWeekSummary(weekTotals, ctx.config.clients, wk));
+}
+```
+
+- [ ] **Step 5: Run test (expect pass)**
+
+```bash
+FORCE_COLOR=3 npm test -- tests/commands/today.test.ts
+```
+
+Expected: All pass.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add src/commands/context.ts src/commands/today.ts tests/commands/today.test.ts
+git commit -m "feat(commands): today + this week summary command"
+```
+
+---
+
+### Task 5.2: commands/cal.ts — monthly calendar
+
+**Files:**
+- Create: `src/commands/cal.ts`
+- Test: `tests/commands/cal.test.ts`
+
+- [ ] **Step 1: Write failing test**
+
+`tests/commands/cal.test.ts`:
+
+```typescript
+import { describe, it, expect, vi, afterEach } from "vitest";
+import { runCal } from "../../src/commands/cal.js";
+import type { Config } from "../../src/config/schema.js";
+import stripAnsi from "../helpers/stripAnsi.js";
+
+afterEach(() => vi.restoreAllMocks());
+
+const cfg: Config = {
+  version: 1,
+  solidtime: { baseUrl: "x", organizationId: "org" },
+  conversion: { hoursPerDay: 7 },
+  clients: [
+    { id: "acme", solidtimeProjectIds: ["p1"], label: "Acme", color: "blue", targetDaysPerWeek: 3 },
+  ],
+  locale: "fr-FR", holidaysRegion: "FR",
+};
+
+describe("runCal", () => {
+  it("prints month grid and totals", async () => {
+    const logs: string[] = [];
+    vi.spyOn(console, "log").mockImplementation((s: string) => { logs.push(s); });
+    await runCal({ config: cfg, now: new Date(2026, 4, 13), fresh: false }, {
+      fetchEntries: async () => [
+        { id: "e1", start: "2026-05-05T08:00:00", end: "2026-05-05T15:00:00", duration: 7*3600, projectId: "p1", description: "", billable: true },
+      ],
+    }, { year: 2026, month: 5 });
+    const out = stripAnsi(logs.join("\n"));
+    expect(out).toContain("Mai 2026");
+    expect(out).toContain("Ce mois");
+    expect(out).toContain("Semaine");
+  });
+});
+```
+
+- [ ] **Step 2: Run test (expect fail)**
+
+```bash
+npm test -- tests/commands/cal.test.ts
+```
+
+Expected: FAIL.
+
+- [ ] **Step 3: Implement**
+
+`src/commands/cal.ts`:
+
+```typescript
+import type { Context } from "./context.js";
+import type { EntrySource } from "./today.js";
+import { monthRange, weekRange, formatISODate, isoWeekOf } from "../domain/week.js";
+import { aggregateEntries, sumPerClient } from "../domain/aggregate.js";
+import { renderMonthlyCalendar } from "../render/calendar.js";
+import { renderMonthSummary, renderWeekSummary } from "../render/summary.js";
+
+export type CalOptions = { year: number; month: number };
+
+export async function runCal(ctx: Context, src: EntrySource, opts: CalOptions): Promise<void> {
+  const range = monthRange(opts.year, opts.month);
+  const entries = await src.fetchEntries(formatISODate(range.start), formatISODate(range.end));
+
+  const days = aggregateEntries(entries, range, ctx.config.clients, {
+    hoursPerDay: ctx.config.conversion.hoursPerDay,
+    holidaysRegion: ctx.config.holidaysRegion,
+  });
+
+  console.log(renderMonthlyCalendar(opts.year, opts.month, days, ctx.config.clients));
+  console.log();
+
+  const totals = sumPerClient(days);
+  const targets = new Map(ctx.config.clients.map((c) => [c.id, c.targetDaysPerWeek * 4.33] as const));
+  console.log(renderMonthSummary(totals, targets, ctx.config.clients));
+  console.log();
+
+  // If "now" falls inside the displayed month, append current-week summary
+  if (ctx.now.getFullYear() === opts.year && ctx.now.getMonth() + 1 === opts.month) {
+    const wk = weekRange(ctx.now);
+    const weekDays = aggregateEntries(entries, wk, ctx.config.clients, {
+      hoursPerDay: ctx.config.conversion.hoursPerDay,
+      holidaysRegion: ctx.config.holidaysRegion,
+    });
+    const weekTotals = sumPerClient(weekDays);
+    const { week } = isoWeekOf(ctx.now);
+    console.log(renderWeekSummary(weekTotals, ctx.config.clients, week));
+  }
+}
+```
+
+- [ ] **Step 4: Run test (expect pass)**
+
+```bash
+FORCE_COLOR=3 npm test -- tests/commands/cal.test.ts
+```
+
+Expected: All pass.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/commands/cal.ts tests/commands/cal.test.ts
+git commit -m "feat(commands): monthly calendar command"
+```
+
+---
+
+### Task 5.3: commands/week.ts — week-detail view
+
+**Files:**
+- Create: `src/commands/week.ts`
+- Test: `tests/commands/week.test.ts`
+
+- [ ] **Step 1: Write failing test**
+
+`tests/commands/week.test.ts`:
+
+```typescript
+import { describe, it, expect, vi, afterEach } from "vitest";
+import { runWeek } from "../../src/commands/week.js";
+import type { Config } from "../../src/config/schema.js";
+import stripAnsi from "../helpers/stripAnsi.js";
+
+afterEach(() => vi.restoreAllMocks());
+
+const cfg: Config = {
+  version: 1,
+  solidtime: { baseUrl: "x", organizationId: "org" },
+  conversion: { hoursPerDay: 7 },
+  clients: [
+    { id: "acme", solidtimeProjectIds: ["p1"], label: "Acme", color: "blue", targetDaysPerWeek: 3 },
+    { id: "globex", solidtimeProjectIds: ["p2"], label: "Globex", color: "green", targetDaysPerWeek: 2 },
+  ],
+  locale: "fr-FR", holidaysRegion: "FR",
+};
+
+describe("runWeek", () => {
+  it("prints one line per day Mon→Sun with client breakdown", async () => {
+    const logs: string[] = [];
+    vi.spyOn(console, "log").mockImplementation((s: string) => { logs.push(s); });
+    await runWeek({ config: cfg, now: new Date(2026, 4, 13), fresh: false }, {
+      fetchEntries: async () => [
+        { id: "e1", start: "2026-05-11T08:00:00", end: "2026-05-11T15:00:00", duration: 7*3600, projectId: "p1", description: "", billable: true },
+        { id: "e2", start: "2026-05-13T08:00:00", end: "2026-05-13T11:30:00", duration: 3.5*3600, projectId: "p1", description: "", billable: true },
+        { id: "e3", start: "2026-05-13T14:00:00", end: "2026-05-13T17:30:00", duration: 3.5*3600, projectId: "p2", description: "", billable: true },
+      ],
+    });
+    const out = stripAnsi(logs.join("\n"));
+    expect(out).toMatch(/Lun.*11/);
+    expect(out).toMatch(/Mer.*13/);
+    expect(out).toContain("Acme");
+    expect(out).toContain("Globex");
+  });
+});
+```
+
+- [ ] **Step 2: Run test (expect fail)**
+
+```bash
+npm test -- tests/commands/week.test.ts
+```
+
+Expected: FAIL.
+
+- [ ] **Step 3: Implement**
+
+`src/commands/week.ts`:
+
+```typescript
+import type { Context } from "./context.js";
+import type { EntrySource } from "./today.js";
+import { weekRange, formatISODate, isoWeekOf } from "../domain/week.js";
+import { aggregateEntries, sumPerClient } from "../domain/aggregate.js";
+import { renderWeekSummary } from "../render/summary.js";
+import { sectionSeparator } from "../render/box.js";
+import { accent, dim, clientCell, neutralCell, emptyCell } from "../render/palette.js";
+
+const WD_FR = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
+
+export async function runWeek(ctx: Context, src: EntrySource, opts?: { date?: Date }): Promise<void> {
+  const anchor = opts?.date ?? ctx.now;
+  const range = weekRange(anchor);
+  const entries = await src.fetchEntries(formatISODate(range.start), formatISODate(range.end));
+  const days = aggregateEntries(entries, range, ctx.config.clients, {
+    hoursPerDay: ctx.config.conversion.hoursPerDay,
+    holidaysRegion: ctx.config.holidaysRegion,
+  });
+  const { week } = isoWeekOf(anchor);
+
+  console.log(sectionSeparator(`Semaine ${week}`, 60));
+  console.log();
+
+  for (const d of days) {
+    const dn = parseInt(d.date.slice(-2), 10);
+    const label = `${WD_FR[d.weekday]} ${String(dn).padStart(2, " ")}`;
+    let cell: string;
+    if (d.isHoliday) cell = neutralCell(` ${dn} `);
+    else if (d.isWeekend) cell = neutralCell(` ${dn} `);
+    else if (d.totalDays === 0) cell = emptyCell(` ${dn} `);
+    else {
+      const dom = ctx.config.clients.find((c) => c.id === d.dominantClient);
+      cell = dom ? clientCell(` ${dn} `, dom.color) : emptyCell(` ${dn} `);
+    }
+    const fractions = ctx.config.clients
+      .map((c) => {
+        const v = d.perClient.get(c.id) ?? 0;
+        return v > 0 ? `${c.label} ${v.toFixed(2)}j` : null;
+      })
+      .filter((x): x is string => x !== null)
+      .join("  ");
+    console.log(`   ${cell}  ${accent(label)}   ${dim(fractions || "—")}`);
+  }
+
+  console.log();
+  const totals = sumPerClient(days);
+  console.log(renderWeekSummary(totals, ctx.config.clients, week));
+}
+```
+
+- [ ] **Step 4: Run test (expect pass)**
+
+```bash
+FORCE_COLOR=3 npm test -- tests/commands/week.test.ts
+```
+
+Expected: All pass.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/commands/week.ts tests/commands/week.test.ts
+git commit -m "feat(commands): week-detail view with per-day breakdown"
+```
+
+---
+
+### Task 5.4: commands/sync.ts — force refresh cache
+
+**Files:**
+- Create: `src/commands/sync.ts`
+
+- [ ] **Step 1: Implement (light, exercised via integration test in Task 6.3)**
+
+`src/commands/sync.ts`:
+
+```typescript
+import type { Context } from "./context.js";
+import { createSolidtimeClient } from "../solidtime/client.js";
+import { getToken } from "../config/keychain.js";
+import { writeCache, defaultCachePath, CACHE_VERSION } from "../cache/store.js";
+import { dim, accent } from "../render/palette.js";
+
+export async function runSync(ctx: Context): Promise<void> {
+  const token = await getToken();
+  if (!token) {
+    console.error("❌ Token Solidtime absent. Lance `freelance config`.");
+    process.exit(1);
+  }
+  const client = createSolidtimeClient({
+    baseUrl: ctx.config.solidtime.baseUrl,
+    token,
+    organizationId: ctx.config.solidtime.organizationId,
+  });
+
+  const to = new Date(ctx.now);
+  const from = new Date(ctx.now);
+  from.setDate(from.getDate() - 90);
+
+  const fmt = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+  console.log(dim("Synchronisation…"));
+  const entries = await client.fetchTimeEntries(fmt(from), fmt(to));
+  await writeCache(defaultCachePath(), {
+    version: CACHE_VERSION,
+    fetchedAt: new Date().toISOString(),
+    windowFrom: fmt(from),
+    windowTo: fmt(to),
+    entries,
+  });
+  console.log(`${accent("✓")} ${entries.length} entries synced.`);
+}
+```
+
+- [ ] **Step 2: Commit**
+
+```bash
+git add src/commands/sync.ts
+git commit -m "feat(commands): sync force-refreshes 90-day cache"
+```
+
+---
+
+### Task 5.5: commands/status.ts — health check
+
+**Files:**
+- Create: `src/commands/status.ts`
+
+- [ ] **Step 1: Implement**
+
+`src/commands/status.ts`:
+
+```typescript
+import type { Context } from "./context.js";
+import { getToken } from "../config/keychain.js";
+import { createSolidtimeClient } from "../solidtime/client.js";
+import { readCache, defaultCachePath } from "../cache/store.js";
+import { configPath } from "../config/store.js";
+import { accent, dim } from "../render/palette.js";
+
+export async function runStatus(ctx: Context): Promise<void> {
+  console.log(accent("freelance-cal · statut"));
+  console.log();
+
+  console.log(`   ${dim("Config :")} ${configPath()}`);
+  console.log(`   ${dim("Org    :")} ${ctx.config.solidtime.organizationId}`);
+  console.log(`   ${dim("Clients :")} ${ctx.config.clients.length}`);
+
+  const tok = await getToken();
+  if (!tok) {
+    console.log(`   ${dim("Token  :")} ❌ absent`);
+  } else {
+    try {
+      const c = createSolidtimeClient({
+        baseUrl: ctx.config.solidtime.baseUrl,
+        token: tok,
+        organizationId: ctx.config.solidtime.organizationId,
+      });
+      const me = await c.getMe();
+      console.log(`   ${dim("Token  :")} ✓ valide (${me.email})`);
+    } catch (e) {
+      console.log(`   ${dim("Token  :")} ❌ rejeté par Solidtime`);
+    }
+  }
+
+  const cache = await readCache(defaultCachePath());
+  if (cache) {
+    const ageMs = Date.now() - new Date(cache.fetchedAt).getTime();
+    const ageMin = Math.round(ageMs / 60000);
+    console.log(`   ${dim("Cache  :")} ${cache.entries.length} entries, sync il y a ${ageMin} min`);
+  } else {
+    console.log(`   ${dim("Cache  :")} vide`);
+  }
+}
+```
+
+- [ ] **Step 2: Commit**
+
+```bash
+git add src/commands/status.ts
+git commit -m "feat(commands): status command with token + cache health"
+```
+
+---
+
+### Task 5.6: commands/config.ts — interactive wizard
+
+**Files:**
+- Create: `src/commands/config.ts`
+
+- [ ] **Step 1: Implement**
+
+`src/commands/config.ts`:
+
+```typescript
+import { input, select, checkbox, password, confirm } from "@inquirer/prompts";
+import { loadConfig, saveConfig, configPath } from "../config/store.js";
+import { defaultConfig, type Client, type ColorKey } from "../config/schema.js";
+import { setToken, getToken } from "../config/keychain.js";
+import { createSolidtimeClient } from "../solidtime/client.js";
+import { accent, dim } from "../render/palette.js";
+
+const COLORS: ColorKey[] = ["blue", "green", "amber", "pink", "cyan", "purple"];
+
+function slugify(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 24);
+}
+
+export async function runConfig(): Promise<void> {
+  console.log(accent("freelance-cal · configuration"));
+  console.log();
+
+  // 1. Token
+  const existing = await getToken();
+  let token = existing;
+  if (existing) {
+    const reuse = await confirm({ message: "Un token est déjà stocké. Garder ce token ?", default: true });
+    if (!reuse) token = null;
+  }
+  if (!token) {
+    token = await password({ message: "Token API Solidtime :", mask: "•" });
+    const stored = await setToken(token);
+    console.log(dim(`   → stocké via ${stored.backend}`));
+  }
+
+  // 2. Validate + pick organisation
+  const tmpClient = createSolidtimeClient({
+    baseUrl: "https://app.solidtime.io/api",
+    token: token!,
+    organizationId: "PLACEHOLDER",
+  });
+  let me;
+  try {
+    me = await tmpClient.getMe();
+  } catch (e: unknown) {
+    console.error(`❌ Token rejeté par Solidtime : ${(e as Error).message}`);
+    process.exit(1);
+  }
+  console.log(dim(`   ✓ connecté en tant que ${me.email}`));
+
+  const orgs = await tmpClient.listOrganizations();
+  if (orgs.length === 0) {
+    console.error("❌ Aucune organisation Solidtime trouvée.");
+    process.exit(1);
+  }
+  const orgId = orgs.length === 1
+    ? orgs[0].id
+    : await select({
+        message: "Organisation :",
+        choices: orgs.map((o) => ({ name: o.name, value: o.id })),
+      });
+
+  // 3. List projects, pick which to map
+  const realClient = createSolidtimeClient({
+    baseUrl: "https://app.solidtime.io/api",
+    token: token!,
+    organizationId: orgId,
+  });
+  const projects = await realClient.listProjects();
+  if (projects.length === 0) {
+    console.error("❌ Aucun projet dans cette organisation.");
+    process.exit(1);
+  }
+
+  const existingCfg = (await loadConfig()) ?? defaultConfig(orgId);
+
+  const clients: Client[] = [];
+  const remaining = [...projects];
+
+  while (remaining.length > 0) {
+    const addMore = clients.length === 0
+      ? true
+      : await confirm({ message: "Ajouter un autre client ?", default: false });
+    if (!addMore) break;
+
+    const picked = await checkbox({
+      message: "Quels projets Solidtime appartiennent à ce client ?",
+      choices: remaining.map((p) => ({ name: p.name, value: p.id })),
+    });
+    if (picked.length === 0) continue;
+
+    const label = await input({
+      message: "Nom court du client :",
+      default: projects.find((p) => p.id === picked[0])?.name ?? "Client",
+    });
+    const color = (await select({
+      message: "Couleur :",
+      choices: COLORS.map((c) => ({ name: c, value: c })),
+    })) as ColorKey;
+    const targetStr = await input({
+      message: "Objectif jours / semaine :",
+      default: "2.5",
+      validate: (s) => !Number.isNaN(parseFloat(s)) || "Nombre attendu",
+    });
+
+    clients.push({
+      id: slugify(label) || `c${clients.length + 1}`,
+      solidtimeProjectIds: picked,
+      label,
+      color,
+      targetDaysPerWeek: parseFloat(targetStr),
+    });
+    for (const id of picked) {
+      const i = remaining.findIndex((p) => p.id === id);
+      if (i >= 0) remaining.splice(i, 1);
+    }
+  }
+
+  const hoursStr = await input({
+    message: "Heures par jour facturé (règle 7h=1j) :",
+    default: String(existingCfg.conversion.hoursPerDay),
+    validate: (s) => parseFloat(s) > 0 || "Nombre positif attendu",
+  });
+
+  const cfg = {
+    ...existingCfg,
+    solidtime: { ...existingCfg.solidtime, organizationId: orgId },
+    conversion: { hoursPerDay: parseFloat(hoursStr) },
+    clients,
+  };
+  await saveConfig(configPath(), cfg);
+  console.log();
+  console.log(`${accent("✓")} Configuration sauvegardée dans ${dim(configPath())}`);
+}
+```
+
+- [ ] **Step 2: Commit**
+
+```bash
+git add src/commands/config.ts
+git commit -m "feat(commands): interactive config wizard with token + clients setup"
+```
+
+---
+
+### Task 5.7: commands/menu.ts — interactive main menu loop
+
+**Files:**
+- Create: `src/commands/menu.ts`
+
+- [ ] **Step 1: Implement**
+
+`src/commands/menu.ts`:
+
+```typescript
+import { select, confirm } from "@inquirer/prompts";
+import type { Context } from "./context.js";
+import type { EntrySource } from "./today.js";
+import { runToday } from "./today.js";
+import { runWeek } from "./week.js";
+import { runCal } from "./cal.js";
+import { runSync } from "./sync.js";
+import { runStatus } from "./status.js";
+import { runConfig } from "./config.js";
+import { accent } from "../render/palette.js";
+
+type Choice = "today" | "week" | "cal" | "sync" | "config" | "status" | "quit";
+
+export async function runMenu(ctx: Context, src: EntrySource): Promise<void> {
+  while (true) {
+    console.log();
+    console.log(accent("freelance"));
+    const choice = (await select<Choice>({
+      message: "Que veux-tu voir ?",
+      choices: [
+        { name: "Aujourd'hui              (t)", value: "today" },
+        { name: "Semaine en cours         (w)", value: "week" },
+        { name: "Calendrier du mois       (c)", value: "cal" },
+        { name: "Synchroniser maintenant  (s)", value: "sync" },
+        { name: "Configurer               (g)", value: "config" },
+        { name: "Statut                   (i)", value: "status" },
+        { name: "Quitter                  (q)", value: "quit" },
+      ],
+    })) as Choice;
+
+    if (choice === "quit") return;
+
+    console.log();
+    switch (choice) {
+      case "today":  await runToday(ctx, src); break;
+      case "week":   await runWeek(ctx, src); break;
+      case "cal":    await runCal(ctx, src, { year: ctx.now.getFullYear(), month: ctx.now.getMonth() + 1 }); break;
+      case "sync":   await runSync(ctx); break;
+      case "status": await runStatus(ctx); break;
+      case "config": await runConfig(); break;
+    }
+
+    console.log();
+    const again = await confirm({ message: "Retour au menu ?", default: true });
+    if (!again) return;
+  }
+}
+```
+
+- [ ] **Step 2: Commit**
+
+```bash
+git add src/commands/menu.ts
+git commit -m "feat(commands): interactive menu loop"
+```
+
+---
+
+## Phase 6 — CLI entry + integration
+
+### Task 6.1: cli.ts — dispatch & EntrySource wiring
+
+**Files:**
+- Modify: `src/cli.ts` (replace placeholder)
+- Create: `src/cli/entrySource.ts`
+
+- [ ] **Step 1: Implement EntrySource that uses cache + Solidtime**
+
+`src/cli/entrySource.ts`:
+
+```typescript
+import type { Context } from "../commands/context.js";
+import type { EntrySource } from "../commands/today.js";
+import { createSolidtimeClient } from "../solidtime/client.js";
+import { getToken } from "../config/keychain.js";
+import { readCache, writeCache, defaultCachePath, isFresh, covers, CACHE_VERSION } from "../cache/store.js";
+
+export function buildEntrySource(ctx: Context): EntrySource {
+  return {
+    async fetchEntries(fromYmd: string, toYmd: string) {
+      const cachePath = defaultCachePath();
+      const cached = await readCache(cachePath);
+      if (!ctx.fresh && cached && isFresh(cached) && covers(cached, fromYmd, toYmd)) {
+        return filterByRange(cached.entries, fromYmd, toYmd);
+      }
+      const token = await getToken();
+      if (!token) throw new Error("Token Solidtime absent. Lance `freelance config`.");
+      const client = createSolidtimeClient({
+        baseUrl: ctx.config.solidtime.baseUrl,
+        token,
+        organizationId: ctx.config.solidtime.organizationId,
+      });
+      // Refresh on a 90-day window centred on now
+      const winFrom = ymdMinusDays(ctx.now, 60);
+      const winTo   = ymdPlusDays(ctx.now, 30);
+      try {
+        const entries = await client.fetchTimeEntries(winFrom, winTo);
+        await writeCache(cachePath, {
+          version: CACHE_VERSION,
+          fetchedAt: new Date().toISOString(),
+          windowFrom: winFrom,
+          windowTo: winTo,
+          entries,
+        });
+        return filterByRange(entries, fromYmd, toYmd);
+      } catch (e) {
+        if (cached) {
+          console.error(`⚠ Mode hors-ligne, données du ${cached.fetchedAt}`);
+          return filterByRange(cached.entries, fromYmd, toYmd);
+        }
+        throw e;
+      }
+    },
+  };
+}
+
+function filterByRange(entries: { start: string }[], fromYmd: string, toYmd: string) {
+  return entries.filter((e) => {
+    const ymd = e.start.slice(0, 10);
+    return ymd >= fromYmd && ymd <= toYmd;
+  }) as any;
+}
+
+function ymdMinusDays(d: Date, n: number) {
+  const out = new Date(d); out.setDate(out.getDate() - n);
+  return formatYmd(out);
+}
+function ymdPlusDays(d: Date, n: number) {
+  const out = new Date(d); out.setDate(out.getDate() + n);
+  return formatYmd(out);
+}
+function formatYmd(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+```
+
+- [ ] **Step 2: Replace src/cli.ts**
+
+```typescript
+#!/usr/bin/env node
+import { loadConfig } from "./config/store.js";
+import { runMenu } from "./commands/menu.js";
+import { runToday } from "./commands/today.js";
+import { runWeek } from "./commands/week.js";
+import { runCal } from "./commands/cal.js";
+import { runSync } from "./commands/sync.js";
+import { runStatus } from "./commands/status.js";
+import { runConfig } from "./commands/config.js";
+import { buildEntrySource } from "./cli/entrySource.js";
+
+async function main() {
+  const args = process.argv.slice(2);
+  const fresh = args.includes("--fresh");
+  const cmd = args.find((a) => !a.startsWith("--")) ?? "menu";
+
+  if (cmd === "config") {
+    await runConfig();
+    return;
+  }
+
+  const config = await loadConfig();
+  if (!config) {
+    console.log("Aucune configuration. Lancement du wizard…");
+    await runConfig();
+    return;
+  }
+
+  const ctx = { config, now: new Date(), fresh };
+  const src = buildEntrySource(ctx);
+
+  switch (cmd) {
+    case "menu":
+    case undefined:
+      await runMenu(ctx, src);
+      break;
+    case "today":
+      await runToday(ctx, src);
+      break;
+    case "week": {
+      const wkArg  = args.find((a) => a.startsWith("--week="));
+      const yrArg  = args.find((a) => a.startsWith("--year="));
+      let anchor: Date | undefined;
+      if (wkArg) {
+        const wk = parseInt(wkArg.split("=")[1] ?? "", 10);
+        const yr = yrArg ? parseInt(yrArg.split("=")[1] ?? "", 10) : ctx.now.getFullYear();
+        if (!Number.isNaN(wk) && !Number.isNaN(yr)) {
+          // ISO week N of year Y → take the Thursday of that week, then weekRange() inside runWeek handles it.
+          const jan4 = new Date(yr, 0, 4);
+          const jan4Day = (jan4.getDay() + 6) % 7;
+          anchor = new Date(jan4);
+          anchor.setDate(jan4.getDate() - jan4Day + (wk - 1) * 7 + 3);
+        }
+      }
+      await runWeek(ctx, src, anchor ? { date: anchor } : undefined);
+      break;
+    }
+    case "cal": {
+      const monthArg = args.find((a) => a.startsWith("--month="));
+      let year = ctx.now.getFullYear();
+      let month = ctx.now.getMonth() + 1;
+      if (monthArg) {
+        const v = monthArg.split("=")[1] ?? "";
+        const m = v.match(/^(\d{4})-(\d{2})$/);
+        if (m) { year = parseInt(m[1], 10); month = parseInt(m[2], 10); }
+      }
+      await runCal(ctx, src, { year, month });
+      break;
+    }
+    case "sync":
+      await runSync(ctx);
+      break;
+    case "status":
+      await runStatus(ctx);
+      break;
+    default:
+      console.error(`Commande inconnue : ${cmd}`);
+      process.exit(2);
+  }
+}
+
+main().catch((e) => {
+  console.error(`❌ ${(e as Error).message}`);
+  process.exit(1);
+});
+```
+
+- [ ] **Step 3: Build and check shebang preserved**
+
+```bash
+cd ~/freelance-cal && npm run build && head -1 dist/cli.js
+```
+
+Expected output starts with `#!/usr/bin/env node`. If tsup strips it, add `--banner "#!/usr/bin/env node\n"` to the build script.
+
+- [ ] **Step 4: Type-check**
+
+```bash
+cd ~/freelance-cal && npm run typecheck
+```
+
+Expected: zero errors.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/cli.ts src/cli/entrySource.ts
+git commit -m "feat(cli): dispatch + cache-aware entry source"
+```
+
+---
+
+### Task 6.2: Install locally and smoke test
+
+**Files:** none (runtime verification only)
+
+- [ ] **Step 1: Build and link**
+
+```bash
+cd ~/freelance-cal && npm run build && npm link
+```
+
+Expected: `freelance` available on PATH. Verify:
+
+```bash
+which freelance
+```
+
+- [ ] **Step 2: First run (no config) triggers wizard**
+
+```bash
+freelance
+```
+
+Expected: "Aucune configuration. Lancement du wizard…" then inquirer prompts. **Press Ctrl-C** — we don't have a real token in tests; manual exercise happens in the next step.
+
+- [ ] **Step 3: Verify the API contract against the real Solidtime instance (manual)**
+
+Generate a personal API token in your Solidtime account (Settings → API tokens). Then verify the assumed endpoints with curl:
+
+```bash
+TOKEN="<paste-your-token>"
+curl -sS -H "Authorization: Bearer $TOKEN" -H "Accept: application/json" \
+  https://app.solidtime.io/api/v1/users/me | head -c 500
+```
+
+If the JSON shape or path differs from what `src/solidtime/client.ts` expects, adjust the client and re-run `npm test`. Common discrepancies to watch for:
+- Auth header (some Solidtime self-hosts use `X-Api-Token` instead of `Authorization: Bearer …`)
+- Top-level `data` envelope vs. raw array
+- Field names: `project_id` vs `projectId`, `start` vs `started_at`
+
+Once the smoke check passes, run:
+
+```bash
+freelance config
+```
+
+Walk the wizard, then:
+
+```bash
+freelance today
+freelance cal
+freelance week
+freelance status
+```
+
+- [ ] **Step 4: Commit fixes (if any)**
+
+If the client needed adjustments:
+
+```bash
+git add src/solidtime/client.ts tests/solidtime/client.test.ts
+git commit -m "fix(solidtime): align endpoints with live API"
+```
+
+- [ ] **Step 5: Tag v0.1.0**
+
+```bash
+cd ~/freelance-cal && git tag v0.1.0
+```
+
+---
+
+## Self-review checklist
+
+Before declaring the plan done, the implementer should run:
+
+```bash
+cd ~/freelance-cal && npm run typecheck && npm test
+```
+
+Both must pass. Then:
+
+- [ ] All 7 commands exist and dispatch from `cli.ts`
+- [ ] Menu loop works (Ctrl-C exits cleanly)
+- [ ] First run triggers wizard automatically
+- [ ] Cache file appears at `~/.config/freelance-cal/cache.json` after first sync
+- [ ] Token is in macOS Keychain (`security find-generic-password -s freelance-cal -a solidtime-token`)
+- [ ] `--fresh` flag forces re-fetch
+- [ ] Truecolor renders (try on Ghostty/iTerm2/Warp)
+- [ ] Snapshot tests are stable across runs (no timestamps in render output)
+
+## Future work (out of scope for v0.1)
+
+- Quarter / year aggregated view
+- CSV export per client per month
+- Background sync via launchd
+- Multi-organisation support
+- npm publish
