@@ -71,6 +71,7 @@ export async function runConfig(): Promise<void> {
       ? orgs[0]!.id
       : await select({
           message: t("config.org"),
+          default: existingCfgEarly?.solidtime.organizationId,
           choices: orgs.map((o) => ({ name: o.name, value: o.id })),
         });
 
@@ -85,10 +86,15 @@ export async function runConfig(): Promise<void> {
     process.exit(1);
   }
 
-  const existingCfg = (await loadConfig()) ?? defaultConfig(orgId);
+  const existingCfg = existingCfgEarly ?? defaultConfig(orgId);
 
-  const clients: Client[] = [];
-  const remaining = [...projects];
+  const clients: Client[] = existingCfg.clients.map((c) => ({ ...c }));
+  const mappedIds = new Set(clients.flatMap((c) => c.solidtimeProjectIds));
+  const remaining = projects.filter((p) => !mappedIds.has(p.id));
+
+  if (clients.length > 0) {
+    console.log(dim(t("config.existingClients", { labels: clients.map((c) => c.label).join(", ") })));
+  }
 
   while (remaining.length > 0) {
     const addMore =
