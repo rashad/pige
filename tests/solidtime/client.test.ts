@@ -42,8 +42,8 @@ describe("solidtime client", () => {
   it("fetchTimeEntries normalises to camelCase", async () => {
     stubFetch((url) => {
       expect(url).toContain(`/organizations/${ORG}/time-entries`);
-      expect(url).toContain("start=2026-05-01");
-      expect(url).toContain("end=2026-05-31");
+      expect(url).toContain("start=2026-05-01T00%3A00%3A00Z");
+      expect(url).toContain("end=2026-05-31T23%3A59%3A59Z");
       return new Response(JSON.stringify({ data: [
         { id: "e1", start: "2026-05-13T08:00:00Z", end: "2026-05-13T15:00:00Z",
           duration: 25200, project_id: "p1", description: "dev", billable: true },

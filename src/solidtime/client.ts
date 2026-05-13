@@ -44,7 +44,10 @@ export function createSolidtimeClient(opts: SolidtimeClientOptions): SolidtimeCl
       return req<SolidtimeProject[]>(`/v1/organizations/${opts.organizationId}/projects`);
     },
     async fetchTimeEntries(fromYmd: string, toYmd: string) {
-      const qs = new URLSearchParams({ start: fromYmd, end: toYmd, per_page: "1000" }).toString();
+      // Solidtime requires the Y-m-d\TH:i:s\Z format (UTC), not bare dates.
+      const startIso = `${fromYmd}T00:00:00Z`;
+      const endIso   = `${toYmd}T23:59:59Z`;
+      const qs = new URLSearchParams({ start: startIso, end: endIso, per_page: "1000" }).toString();
       const raw = await req<Array<{
         id: string; start: string; end: string | null; duration: number | null;
         project_id: string; description?: string; billable?: boolean;
