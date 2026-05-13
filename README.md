@@ -2,7 +2,7 @@
 
 A small terminal calendar for freelance day tracking, built on top of [Solidtime](https://solidtime.io).
 
-`pige` reads your Solidtime time entries and renders them as a monthly heatmap calendar, a current-week balance against per-client targets, and a quick "today" summary — all in your terminal. The UI is in French (named after the slang for a freelance gig). Install and config work in any locale.
+`pige` reads your Solidtime time entries and renders them as a monthly heatmap calendar, a current-week balance against per-client targets, and a quick "today" summary — all in your terminal. Bilingual UI (English or French — you pick during config; default is English). The name comes from French slang for a freelance gig.
 
 ```
   ╭──────────────────────────────────────────────────────────╮
@@ -29,7 +29,7 @@ A small terminal calendar for freelance day tracking, built on top of [Solidtime
                  Total semaine : 4.0 j
 ```
 
-(Real output is 24-bit truecolor cells with Catppuccin-inspired pastels — the blocks above are just an approximation for plain Markdown.)
+(Real output is 24-bit truecolor cells with Catppuccin-inspired pastels — the blocks above are just an approximation. Example shown in French; switch to English with `pige config`.)
 
 ## Why
 
@@ -66,12 +66,13 @@ pige
 
 If no config exists, a wizard runs. It will:
 
-1. Ask for your Solidtime API token (stored in macOS Keychain under service `pige`).
-2. Validate against `app.solidtime.io` and pick your organization.
-3. Let you map Solidtime **projects → clients** — one client can hold multiple projects.
-4. Ask for a color and a weekly day target per client.
+1. **Pick a language** — English or French. Defaults to your `$LANG` (e.g. `fr_*` → French, anything else → English).
+2. Ask for your Solidtime API token (stored in macOS Keychain under service `pige`).
+3. Validate against `app.solidtime.io` and pick your organization.
+4. Let you map Solidtime **projects → clients** — one client can hold multiple projects.
+5. Ask for a color and a weekly day target per client.
 
-Re-run `pige config` any time to edit.
+Re-run `pige config` any time to edit. Every prompt remembers your current value, so pressing Enter through the wizard keeps everything as-is.
 
 ## Usage
 
@@ -110,6 +111,14 @@ Override the config directory with `PIGE_DIR=…`. Provide the token via `PIGE_S
 ## Conversion rule
 
 `pige` converts hours to days linearly using a configurable `hoursPerDay` (default `7`). Edit it during `pige config` or directly in `config.json`.
+
+## Language
+
+The UI is available in **English** (default for new installs) and **French**. Your pick is stored in `~/.config/pige/config.json` under `locale` (`"en"` or `"fr"`).
+
+- **New installs** auto-detect from `$LANG` / `$LC_ALL` (anything starting with `fr_*` defaults to French, otherwise English) and confirm via the wizard's first prompt.
+- **Change later**: re-run `pige config`, pick the other language, then Enter through the rest of the wizard to keep everything else as-is.
+- **Independent of holidays**: the `holidaysRegion` field is separate — a French-speaker living abroad can keep `locale: "fr"` with `holidaysRegion: "DE"`, and vice versa.
 
 ## Develop
 
