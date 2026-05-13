@@ -143,4 +143,4 @@ The original design and implementation plan live under `docs/superpowers/`.
 
 ## License
 
-Not specified — feel free to copy and adapt for personal use.
+MIT — see [`LICENSE`](./LICENSE).
