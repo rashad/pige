@@ -3,11 +3,11 @@ import type { ColorKey } from "../config/schema.js";
 
 // Catppuccin-inspired palette (mocha)
 const PALETTE: Record<ColorKey, string> = {
-  blue:   "#89b4fa",
-  green:  "#a6e3a1",
-  amber:  "#f9e2af",
-  pink:   "#f5c2e7",
-  cyan:   "#94e2d5",
+  blue: "#89b4fa",
+  green: "#a6e3a1",
+  amber: "#f9e2af",
+  pink: "#f5c2e7",
+  cyan: "#94e2d5",
   purple: "#cba6f7",
 };
 

@@ -1,12 +1,14 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { loadConfig, saveConfig, configPath } from "../../src/config/store.js";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { defaultConfig } from "../../src/config/schema.js";
+import { configPath, loadConfig, saveConfig } from "../../src/config/store.js";
 
 let dir: string;
-beforeEach(() => { dir = mkdtempSync(join(tmpdir(), "fcal-cfg-")); });
+beforeEach(() => {
+  dir = mkdtempSync(join(tmpdir(), "fcal-cfg-"));
+});
 afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
 describe("config store", () => {

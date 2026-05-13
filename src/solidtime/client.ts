@@ -1,4 +1,4 @@
-import type { SolidtimeProject, SolidtimeMe, TimeEntry } from "./types.js";
+import type { SolidtimeMe, SolidtimeProject, TimeEntry } from "./types.js";
 
 export type AuthClient = {
   getMe(): Promise<SolidtimeMe>;
@@ -55,9 +55,8 @@ export function createAuthClient(opts: TransportOptions): AuthClient {
       return req<SolidtimeMe>(`/v1/users/me`);
     },
     async listOrganizations() {
-      const memberships = await req<Array<{ organization: { id: string; name: string } }>>(
-        `/v1/users/me/memberships`,
-      );
+      const memberships =
+        await req<Array<{ organization: { id: string; name: string } }>>(`/v1/users/me/memberships`);
       return memberships.map((m) => m.organization);
     },
   };
@@ -73,12 +72,19 @@ export function createOrgClient(opts: TransportOptions & { organizationId: strin
     async fetchTimeEntries(fromYmd: string, toYmd: string) {
       // Solidtime requires the Y-m-d\TH:i:s\Z format (UTC), not bare dates.
       const startIso = `${fromYmd}T00:00:00Z`;
-      const endIso   = `${toYmd}T23:59:59Z`;
+      const endIso = `${toYmd}T23:59:59Z`;
       const qs = new URLSearchParams({ start: startIso, end: endIso, per_page: "1000" }).toString();
-      const raw = await req<Array<{
-        id: string; start: string; end: string | null; duration: number | null;
-        project_id: string; description?: string; billable?: boolean;
-      }>>(`/v1/organizations/${orgId}/time-entries?${qs}`);
+      const raw = await req<
+        Array<{
+          id: string;
+          start: string;
+          end: string | null;
+          duration: number | null;
+          project_id: string;
+          description?: string;
+          billable?: boolean;
+        }>
+      >(`/v1/organizations/${orgId}/time-entries?${qs}`);
       return raw.map((e) => ({
         id: e.id,
         start: e.start,

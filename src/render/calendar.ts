@@ -1,9 +1,9 @@
-import type { AggregatedDay } from "../domain/aggregate.js";
 import type { Client } from "../config/schema.js";
-import type { T, Locale } from "../i18n.js";
+import type { AggregatedDay } from "../domain/aggregate.js";
+import type { Locale, T } from "../i18n.js";
 import { MONTHS, WEEKDAYS } from "../i18n.js";
-import { clientCell, neutralCell, emptyCell, dim } from "./palette.js";
 import { roundedBox } from "./box.js";
+import { clientCell, dim, emptyCell, neutralCell } from "./palette.js";
 
 const CAL_WIDTH = 60;
 
@@ -20,12 +20,12 @@ export function renderMonthlyCalendar(
   const workedDays = days.filter((d) => d.totalDays > 0).length;
   const title = `pige · ${monthName} ${year}`;
   const rightHud = t("calendar.daysHud", { worked: workedDays, business: businessDays });
-  const titlePadded = (title + " ".repeat(Math.max(1, CAL_WIDTH - 4 - title.length - rightHud.length)) + rightHud);
+  const titlePadded =
+    title + " ".repeat(Math.max(1, CAL_WIDTH - 4 - title.length - rightHud.length)) + rightHud;
 
   const header = roundedBox(titlePadded, CAL_WIDTH);
 
-  const headerLine =
-    "   " + WEEKDAYS[locale].map((w) => dim(w.padStart(4, " "))).join("  ");
+  const headerLine = `   ${WEEKDAYS[locale].map((w) => dim(w.padStart(4, " "))).join("  ")}`;
 
   const first = days[0];
   const leading = first ? first.weekday : 0;
@@ -36,7 +36,7 @@ export function renderMonthlyCalendar(
 
   const rows: string[] = [];
   for (let i = 0; i < cells.length; i += 7) {
-    rows.push("   " + cells.slice(i, i + 7).join("  "));
+    rows.push(`   ${cells.slice(i, i + 7).join("  ")}`);
   }
 
   return [header, "", headerLine, "", ...rows].join("\n");

@@ -8,9 +8,9 @@ export const DEFAULT_TTL_MS = 5 * 60 * 1000;
 
 export type Cache = {
   version: typeof CACHE_VERSION;
-  fetchedAt: string;     // ISO timestamp
-  windowFrom: string;    // YYYY-MM-DD
-  windowTo: string;      // YYYY-MM-DD
+  fetchedAt: string; // ISO timestamp
+  windowFrom: string; // YYYY-MM-DD
+  windowTo: string; // YYYY-MM-DD
   entries: TimeEntry[];
 };
 

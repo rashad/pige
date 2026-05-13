@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
 import { homedir } from "node:os";
+import { dirname, join } from "node:path";
 import type { Config } from "./schema.js";
 import { CONFIG_VERSION } from "./schema.js";
 
@@ -28,5 +28,5 @@ export async function loadConfig(path: string = configPath()): Promise<Config | 
 
 export async function saveConfig(path: string, cfg: Config): Promise<void> {
   await mkdir(dirname(path), { recursive: true });
-  await writeFile(path, JSON.stringify(cfg, null, 2) + "\n", { mode: 0o600 });
+  await writeFile(path, `${JSON.stringify(cfg, null, 2)}\n`, { mode: 0o600 });
 }

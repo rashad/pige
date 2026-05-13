@@ -1,10 +1,10 @@
-import type { Context } from "./context.js";
-import type { TimeEntry } from "../solidtime/types.js";
 import { aggregateEntries, sumPerClient } from "../domain/aggregate.js";
-import { weekRange, formatISODate, isoWeekOf } from "../domain/week.js";
-import { renderWeekSummary } from "../render/summary.js";
+import { formatISODate, isoWeekOf, weekRange } from "../domain/week.js";
 import { sectionSeparator } from "../render/box.js";
 import { accent, dim } from "../render/palette.js";
+import { renderWeekSummary } from "../render/summary.js";
+import type { TimeEntry } from "../solidtime/types.js";
+import type { Context } from "./context.js";
 
 export type EntrySource = {
   fetchEntries(fromYmd: string, toYmd: string): Promise<TimeEntry[]>;
@@ -31,7 +31,9 @@ export async function runToday(ctx: Context, src: EntrySource): Promise<void> {
       const v = todaySum.get(c.id) ?? 0;
       if (v > 0) console.log(`   ${accent(c.label.padEnd(10))} ${v.toFixed(2)} ${ctx.t("unit.day")}`);
     }
-    console.log(`   ${dim(ctx.t("today.total"))} ${accent(todayAgg.totalDays.toFixed(2))} ${ctx.t("unit.day")}`);
+    console.log(
+      `   ${dim(ctx.t("today.total"))} ${accent(todayAgg.totalDays.toFixed(2))} ${ctx.t("unit.day")}`,
+    );
   } else {
     console.log(`   ${dim(ctx.t("today.nothing"))}`);
   }

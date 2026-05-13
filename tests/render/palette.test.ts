@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { resolveColor, dim, accent } from "../../src/render/palette.js";
+import { describe, expect, it } from "vitest";
+import { accent, dim, resolveColor } from "../../src/render/palette.js";
 
 describe("palette", () => {
   it("blue resolves to a hex", () => {

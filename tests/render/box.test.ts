@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { roundedBox, sectionSeparator } from "../../src/render/box.js";
 import stripAnsi from "../helpers/stripAnsi.js";
 

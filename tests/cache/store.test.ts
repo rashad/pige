@@ -1,11 +1,13 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { readCache, writeCache, isFresh, covers } from "../../src/cache/store.js";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { covers, isFresh, readCache, writeCache } from "../../src/cache/store.js";
 
 let dir: string;
-beforeEach(() => { dir = mkdtempSync(join(tmpdir(), "fcal-cache-")); });
+beforeEach(() => {
+  dir = mkdtempSync(join(tmpdir(), "fcal-cache-"));
+});
 afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
 describe("cache store", () => {

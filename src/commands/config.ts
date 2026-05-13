@@ -1,34 +1,36 @@
-import { input, select, checkbox, password, confirm } from "@inquirer/prompts";
-import { loadConfig, saveConfig, configPath } from "../config/store.js";
-import { defaultConfig, type Client, type ColorKey } from "../config/schema.js";
-import { setToken, getToken } from "../config/keychain.js";
-import { createAuthClient, createOrgClient } from "../solidtime/client.js";
+import { checkbox, confirm, input, password, select } from "@inquirer/prompts";
+import { getToken, setToken } from "../config/keychain.js";
+import { type Client, type ColorKey, defaultConfig } from "../config/schema.js";
+import { configPath, loadConfig, saveConfig } from "../config/store.js";
+import { createT, detectSystemLocale, type Locale, normalizeLocale } from "../i18n.js";
 import { accent, dim } from "../render/palette.js";
-import { type Locale, createT, normalizeLocale, detectSystemLocale } from "../i18n.js";
+import { createAuthClient, createOrgClient } from "../solidtime/client.js";
 
 const COLORS: ColorKey[] = ["blue", "green", "amber", "pink", "cyan", "purple"];
 
 function slugify(s: string): string {
-  return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 24);
+  return s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 24);
 }
 
 export async function runConfig(): Promise<void> {
   // Detect initial locale
   const existingCfgEarly = await loadConfig();
-  let locale: Locale = existingCfgEarly
-    ? normalizeLocale(existingCfgEarly.locale)
-    : detectSystemLocale();
+  let locale: Locale = existingCfgEarly ? normalizeLocale(existingCfgEarly.locale) : detectSystemLocale();
 
   const langChoice = await select({
     message: "Language / Langue ?",
     default: locale,
     choices: [
       { name: "Français", value: "fr" as Locale },
-      { name: "English",  value: "en" as Locale },
+      { name: "English", value: "en" as Locale },
     ],
   });
   locale = langChoice;
-  let t = createT(locale);
+  const t = createT(locale);
 
   console.log(accent(t("config.title")));
   console.log();
@@ -93,9 +95,7 @@ export async function runConfig(): Promise<void> {
 
   while (remaining.length > 0) {
     const addMore =
-      clients.length === 0
-        ? true
-        : await confirm({ message: t("config.addClient"), default: false });
+      clients.length === 0 ? true : await confirm({ message: t("config.addClient"), default: false });
     if (!addMore) break;
 
     const picked: string[] = await checkbox({

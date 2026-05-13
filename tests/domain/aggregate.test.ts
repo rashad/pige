@@ -1,7 +1,7 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
+import type { Client } from "../../src/config/schema.js";
 import { aggregateEntries } from "../../src/domain/aggregate.js";
 import type { TimeEntry } from "../../src/solidtime/types.js";
-import type { Client } from "../../src/config/schema.js";
 
 const clients: Client[] = [
   { id: "acme", solidtimeProjectIds: ["p1"], label: "Acme", color: "blue", targetDaysPerWeek: 3 },

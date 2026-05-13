@@ -1,9 +1,9 @@
-import type { Context } from "./context.js";
+import { defaultCachePath, readCache } from "../cache/store.js";
 import { getToken } from "../config/keychain.js";
-import { createAuthClient } from "../solidtime/client.js";
-import { readCache, defaultCachePath } from "../cache/store.js";
 import { configPath } from "../config/store.js";
 import { accent, dim } from "../render/palette.js";
+import { createAuthClient } from "../solidtime/client.js";
+import type { Context } from "./context.js";
 
 export async function runStatus(ctx: Context): Promise<void> {
   console.log(accent(ctx.t("status.title")));
@@ -33,7 +33,9 @@ export async function runStatus(ctx: Context): Promise<void> {
   if (cache) {
     const ageMs = Date.now() - new Date(cache.fetchedAt).getTime();
     const ageMin = Math.round(ageMs / 60000);
-    console.log(`   ${dim(ctx.t("status.cache"))} ${ctx.t("status.cacheEntries", { n: cache.entries.length, min: ageMin })}`);
+    console.log(
+      `   ${dim(ctx.t("status.cache"))} ${ctx.t("status.cacheEntries", { n: cache.entries.length, min: ageMin })}`,
+    );
   } else {
     console.log(`   ${dim(ctx.t("status.cache"))} ${ctx.t("status.cacheEmpty")}`);
   }

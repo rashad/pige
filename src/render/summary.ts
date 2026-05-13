@@ -1,7 +1,7 @@
 import type { Client } from "../config/schema.js";
 import type { T } from "../i18n.js";
-import { sectionSeparator } from "./box.js";
 import { progressBar } from "./bars.js";
+import { sectionSeparator } from "./box.js";
 import { accent, dim } from "./palette.js";
 
 const WIDTH = 60;
@@ -40,9 +40,11 @@ export function renderWeekSummary(
     const bar = progressBar(days, Math.max(tgt, 1), 16, c.color);
     const delta = days - tgt;
     const deltaStr =
-      delta === 0 ? dim(t("summary.ok")) :
-      delta < 0   ? dim(`−${Math.abs(delta).toFixed(1)}`) :
-                    accent(`+${delta.toFixed(1)}`);
+      delta === 0
+        ? dim(t("summary.ok"))
+        : delta < 0
+          ? dim(`−${Math.abs(delta).toFixed(1)}`)
+          : accent(`+${delta.toFixed(1)}`);
     lines.push(
       `   ${accent(c.label.padEnd(10))} ${days.toFixed(1)} / ${tgt.toFixed(1)} ${t("unit.day")}   ${bar}  ${deltaStr}`,
     );

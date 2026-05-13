@@ -1,13 +1,13 @@
-import { expand, confirm, Separator } from "@inquirer/prompts";
+import { confirm, expand, Separator } from "@inquirer/prompts";
+import { accent } from "../render/palette.js";
+import { runCal } from "./cal.js";
+import { runConfig } from "./config.js";
 import type { Context } from "./context.js";
+import { runStatus } from "./status.js";
+import { runSync } from "./sync.js";
 import type { EntrySource } from "./today.js";
 import { runToday } from "./today.js";
 import { runWeek } from "./week.js";
-import { runCal } from "./cal.js";
-import { runSync } from "./sync.js";
-import { runStatus } from "./status.js";
-import { runConfig } from "./config.js";
-import { accent } from "../render/palette.js";
 
 type Choice = "today" | "week" | "cal" | "sync" | "config" | "status" | "quit";
 
@@ -35,12 +35,24 @@ export async function runMenu(ctx: Context, src: EntrySource): Promise<void> {
 
     console.log();
     switch (choice) {
-      case "today":  await runToday(ctx, src); break;
-      case "week":   await runWeek(ctx, src); break;
-      case "cal":    await runCal(ctx, src, { year: ctx.now.getFullYear(), month: ctx.now.getMonth() + 1 }); break;
-      case "sync":   await runSync(ctx); break;
-      case "status": await runStatus(ctx); break;
-      case "config": await runConfig(); break;
+      case "today":
+        await runToday(ctx, src);
+        break;
+      case "week":
+        await runWeek(ctx, src);
+        break;
+      case "cal":
+        await runCal(ctx, src, { year: ctx.now.getFullYear(), month: ctx.now.getMonth() + 1 });
+        break;
+      case "sync":
+        await runSync(ctx);
+        break;
+      case "status":
+        await runStatus(ctx);
+        break;
+      case "config":
+        await runConfig();
+        break;
     }
 
     console.log();

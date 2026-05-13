@@ -1,8 +1,13 @@
 import HolidaysCJS from "date-holidays";
 import { formatISODate } from "./week.js";
 
-// date-holidays is CJS; handle both ESM interop and direct default
-const Holidays = (HolidaysCJS as any).default ?? HolidaysCJS;
+// date-holidays is CJS; handle both ESM interop and direct default.
+type HolidaysCtor = new (region: string) => { getHolidays(year: number): HolidayEntry[] | undefined };
+
+type HolidayEntry = { date: string; name: string; type: string };
+
+const Holidays =
+  (HolidaysCJS as unknown as { default?: HolidaysCtor }).default ?? (HolidaysCJS as unknown as HolidaysCtor);
 
 const cache = new Map<string, Map<string, string>>();
 
@@ -12,7 +17,7 @@ export function holidaysForYear(year: number, region: string): Map<string, strin
   if (cached) return cached;
 
   const hd = new Holidays(region);
-  const list: any[] = hd.getHolidays(year) ?? [];
+  const list = hd.getHolidays(year) ?? [];
   const map = new Map<string, string>();
   for (const h of list) {
     if (h.type !== "public") continue;

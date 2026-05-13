@@ -1,9 +1,9 @@
+import { CACHE_VERSION, covers, defaultCachePath, isFresh, readCache, writeCache } from "../cache/store.js";
 import type { Context } from "../commands/context.js";
 import type { EntrySource } from "../commands/today.js";
-import type { TimeEntry } from "../solidtime/types.js";
-import { createOrgClient } from "../solidtime/client.js";
 import { getToken } from "../config/keychain.js";
-import { readCache, writeCache, defaultCachePath, isFresh, covers, CACHE_VERSION } from "../cache/store.js";
+import { createOrgClient } from "../solidtime/client.js";
+import type { TimeEntry } from "../solidtime/types.js";
 
 export function buildEntrySource(ctx: Context): EntrySource {
   return {
@@ -21,7 +21,7 @@ export function buildEntrySource(ctx: Context): EntrySource {
         organizationId: ctx.config.solidtime.organizationId,
       });
       const winFrom = ymdMinusDays(ctx.now, 60);
-      const winTo   = ymdPlusDays(ctx.now, 30);
+      const winTo = ymdPlusDays(ctx.now, 30);
       try {
         const entries = await client.fetchTimeEntries(winFrom, winTo);
         await writeCache(cachePath, {
@@ -51,11 +51,13 @@ function filterByRange(entries: TimeEntry[], fromYmd: string, toYmd: string): Ti
 }
 
 function ymdMinusDays(d: Date, n: number) {
-  const out = new Date(d); out.setDate(out.getDate() - n);
+  const out = new Date(d);
+  out.setDate(out.getDate() - n);
   return formatYmd(out);
 }
 function ymdPlusDays(d: Date, n: number) {
-  const out = new Date(d); out.setDate(out.getDate() + n);
+  const out = new Date(d);
+  out.setDate(out.getDate() + n);
   return formatYmd(out);
 }
 function formatYmd(d: Date) {

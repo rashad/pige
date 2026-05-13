@@ -1,14 +1,14 @@
 #!/usr/bin/env node
-import { loadConfig } from "./config/store.js";
+import { buildEntrySource } from "./cli/entrySource.js";
+import { runCal } from "./commands/cal.js";
+import { runConfig } from "./commands/config.js";
 import { runMenu } from "./commands/menu.js";
+import { runStatus } from "./commands/status.js";
+import { runSync } from "./commands/sync.js";
 import { runToday } from "./commands/today.js";
 import { runWeek } from "./commands/week.js";
-import { runCal } from "./commands/cal.js";
-import { runSync } from "./commands/sync.js";
-import { runStatus } from "./commands/status.js";
-import { runConfig } from "./commands/config.js";
-import { buildEntrySource } from "./cli/entrySource.js";
-import { createT, normalizeLocale, detectSystemLocale } from "./i18n.js";
+import { loadConfig } from "./config/store.js";
+import { createT, detectSystemLocale, normalizeLocale } from "./i18n.js";
 
 async function main() {
   const args = process.argv.slice(2);
@@ -50,8 +50,8 @@ async function main() {
       await runToday(ctx, src);
       break;
     case "week": {
-      const wkArg  = args.find((a) => a.startsWith("--week="));
-      const yrArg  = args.find((a) => a.startsWith("--year="));
+      const wkArg = args.find((a) => a.startsWith("--week="));
+      const yrArg = args.find((a) => a.startsWith("--year="));
       let anchor: Date | undefined;
       if (wkArg) {
         const wk = parseInt(wkArg.split("=")[1] ?? "", 10);
@@ -73,7 +73,10 @@ async function main() {
       if (monthArg) {
         const v = monthArg.split("=")[1] ?? "";
         const m = v.match(/^(\d{4})-(\d{2})$/);
-        if (m && m[1] && m[2]) { year = parseInt(m[1], 10); month = parseInt(m[2], 10); }
+        if (m?.[1] && m[2]) {
+          year = parseInt(m[1], 10);
+          month = parseInt(m[2], 10);
+        }
       }
       await runCal(ctx, src, { year, month });
       break;

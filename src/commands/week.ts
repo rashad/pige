@@ -1,11 +1,11 @@
+import { aggregateEntries, sumPerClient } from "../domain/aggregate.js";
+import { formatISODate, isoWeekOf, weekRange } from "../domain/week.js";
+import { WEEKDAYS } from "../i18n.js";
+import { sectionSeparator } from "../render/box.js";
+import { accent, clientCell, dim, emptyCell, neutralCell } from "../render/palette.js";
+import { renderWeekSummary } from "../render/summary.js";
 import type { Context } from "./context.js";
 import type { EntrySource } from "./today.js";
-import { weekRange, formatISODate, isoWeekOf } from "../domain/week.js";
-import { aggregateEntries, sumPerClient } from "../domain/aggregate.js";
-import { renderWeekSummary } from "../render/summary.js";
-import { sectionSeparator } from "../render/box.js";
-import { accent, dim, clientCell, neutralCell, emptyCell } from "../render/palette.js";
-import { WEEKDAYS } from "../i18n.js";
 
 export async function runWeek(ctx: Context, src: EntrySource, opts?: { date?: Date }): Promise<void> {
   const anchor = opts?.date ?? ctx.now;

@@ -1,7 +1,7 @@
-import { describe, it, expect } from "vitest";
-import { renderMonthSummary, renderWeekSummary } from "../../src/render/summary.js";
+import { describe, expect, it } from "vitest";
 import type { Client } from "../../src/config/schema.js";
 import { createT } from "../../src/i18n.js";
+import { renderMonthSummary, renderWeekSummary } from "../../src/render/summary.js";
 import stripAnsi from "../helpers/stripAnsi.js";
 
 const t = createT("fr");
@@ -13,8 +13,14 @@ const clients: Client[] = [
 
 describe("renderMonthSummary", () => {
   it("prints label, days, bar and target for each client", () => {
-    const totals = new Map<string, number>([["acme", 8.5], ["globex", 6.0]]);
-    const targets = new Map<string, number>([["acme", 15], ["globex", 10]]);
+    const totals = new Map<string, number>([
+      ["acme", 8.5],
+      ["globex", 6.0],
+    ]);
+    const targets = new Map<string, number>([
+      ["acme", 15],
+      ["globex", 10],
+    ]);
     const out = stripAnsi(renderMonthSummary(totals, targets, clients, t));
     expect(out).toContain("Acme");
     expect(out).toContain("8.5");
@@ -27,7 +33,10 @@ describe("renderMonthSummary", () => {
 
 describe("renderWeekSummary", () => {
   it("shows delta vs target per client", () => {
-    const week = new Map<string, number>([["acme", 2.5], ["globex", 1.5]]);
+    const week = new Map<string, number>([
+      ["acme", 2.5],
+      ["globex", 1.5],
+    ]);
     const out = stripAnsi(renderWeekSummary(week, clients, 20, t));
     expect(out).toContain("Semaine");
     expect(out).toContain("20");

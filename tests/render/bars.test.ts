@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { progressBar } from "../../src/render/bars.js";
 import stripAnsi from "../helpers/stripAnsi.js";
 

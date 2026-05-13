@@ -1,18 +1,12 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import {
-  writeCache,
-  readCache,
-  defaultCachePath,
-  CACHE_VERSION,
-  type Cache,
-} from "../../src/cache/store.js";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { CACHE_VERSION, type Cache, defaultCachePath, readCache, writeCache } from "../../src/cache/store.js";
 import { buildEntrySource } from "../../src/cli/entrySource.js";
-import { createT } from "../../src/i18n.js";
 import type { Context } from "../../src/commands/context.js";
 import type { Config } from "../../src/config/schema.js";
+import { createT } from "../../src/i18n.js";
 
 let tmpDir: string;
 const t = createT("en");
@@ -45,10 +39,13 @@ function makeCtx(now: Date, fresh = false): Context {
 }
 
 function stubFetch(handler: (url: string) => Response | Promise<Response>) {
-  vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo) => {
-    const url = typeof input === "string" ? input : input.toString();
-    return await handler(url);
-  }));
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo) => {
+      const url = typeof input === "string" ? input : input.toString();
+      return await handler(url);
+    }),
+  );
 }
 
 describe("buildEntrySource", () => {
@@ -60,10 +57,24 @@ describe("buildEntrySource", () => {
       windowFrom: "2026-04-01",
       windowTo: "2026-06-30",
       entries: [
-        { id: "e1", start: "2026-05-10T08:00:00Z", end: "2026-05-10T16:00:00Z",
-          duration: 28800, projectId: "p1", description: "", billable: true },
-        { id: "e2", start: "2026-04-15T08:00:00Z", end: "2026-04-15T16:00:00Z",
-          duration: 28800, projectId: "p2", description: "", billable: true },
+        {
+          id: "e1",
+          start: "2026-05-10T08:00:00Z",
+          end: "2026-05-10T16:00:00Z",
+          duration: 28800,
+          projectId: "p1",
+          description: "",
+          billable: true,
+        },
+        {
+          id: "e2",
+          start: "2026-04-15T08:00:00Z",
+          end: "2026-04-15T16:00:00Z",
+          duration: 28800,
+          projectId: "p2",
+          description: "",
+          billable: true,
+        },
       ],
     };
     await writeCache(defaultCachePath(), cache);
@@ -95,10 +106,22 @@ describe("buildEntrySource", () => {
     let fetchCalls = 0;
     stubFetch(() => {
       fetchCalls++;
-      return new Response(JSON.stringify({ data: [
-        { id: "fresh1", start: "2026-05-12T08:00:00Z", end: "2026-05-12T15:00:00Z",
-          duration: 25200, project_id: "p1", description: "", billable: true },
-      ]}), { status: 200 });
+      return new Response(
+        JSON.stringify({
+          data: [
+            {
+              id: "fresh1",
+              start: "2026-05-12T08:00:00Z",
+              end: "2026-05-12T15:00:00Z",
+              duration: 25200,
+              project_id: "p1",
+              description: "",
+              billable: true,
+            },
+          ],
+        }),
+        { status: 200 },
+      );
     });
 
     const src = buildEntrySource(makeCtx(now));
@@ -123,8 +146,15 @@ describe("buildEntrySource", () => {
       windowFrom: "2026-04-01",
       windowTo: "2026-06-30",
       entries: [
-        { id: "old1", start: "2026-05-10T08:00:00Z", end: "2026-05-10T16:00:00Z",
-          duration: 28800, projectId: "p1", description: "", billable: true },
+        {
+          id: "old1",
+          start: "2026-05-10T08:00:00Z",
+          end: "2026-05-10T16:00:00Z",
+          duration: 28800,
+          projectId: "p1",
+          description: "",
+          billable: true,
+        },
       ],
     });
 
@@ -161,18 +191,37 @@ describe("buildEntrySource", () => {
       windowFrom: "2026-04-01",
       windowTo: "2026-06-30",
       entries: [
-        { id: "stale_but_in_cache", start: "2026-05-10T08:00:00Z", end: "2026-05-10T15:00:00Z",
-          duration: 25200, projectId: "p1", description: "", billable: true },
+        {
+          id: "stale_but_in_cache",
+          start: "2026-05-10T08:00:00Z",
+          end: "2026-05-10T15:00:00Z",
+          duration: 25200,
+          projectId: "p1",
+          description: "",
+          billable: true,
+        },
       ],
     });
 
     let fetchCalls = 0;
     stubFetch(() => {
       fetchCalls++;
-      return new Response(JSON.stringify({ data: [
-        { id: "from_network", start: "2026-05-12T08:00:00Z", end: "2026-05-12T15:00:00Z",
-          duration: 25200, project_id: "p1", description: "", billable: true },
-      ]}), { status: 200 });
+      return new Response(
+        JSON.stringify({
+          data: [
+            {
+              id: "from_network",
+              start: "2026-05-12T08:00:00Z",
+              end: "2026-05-12T15:00:00Z",
+              duration: 25200,
+              project_id: "p1",
+              description: "",
+              billable: true,
+            },
+          ],
+        }),
+        { status: 200 },
+      );
     });
 
     const src = buildEntrySource(makeCtx(now, true)); // fresh = true

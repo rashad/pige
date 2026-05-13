@@ -1,11 +1,5 @@
-import { describe, it, expect } from "vitest";
-import {
-  isoWeekOf,
-  weekRange,
-  monthRange,
-  isWeekend,
-  formatISODate,
-} from "../../src/domain/week.js";
+import { describe, expect, it } from "vitest";
+import { formatISODate, isoWeekOf, isWeekend, monthRange, weekRange } from "../../src/domain/week.js";
 
 describe("isoWeekOf", () => {
   it("returns 1 for Jan 4 (always week 1)", () => {
@@ -33,7 +27,7 @@ describe("weekRange", () => {
   it("returns Mon 00:00 → Sun 23:59:59.999 for a Wed input (local TZ)", () => {
     const range = weekRange(new Date("2026-05-13T15:00:00"));
     expect(formatISODate(range.start)).toBe("2026-05-11"); // Mon
-    expect(formatISODate(range.end)).toBe("2026-05-17");   // Sun
+    expect(formatISODate(range.end)).toBe("2026-05-17"); // Sun
   });
 });
 

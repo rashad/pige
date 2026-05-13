@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { holidaysForYear, isHoliday, holidayName } from "../../src/domain/holidays.js";
+import { describe, expect, it } from "vitest";
+import { holidayName, holidaysForYear, isHoliday } from "../../src/domain/holidays.js";
 
 describe("holidaysForYear (FR)", () => {
   it("contains Bastille Day on July 14", () => {

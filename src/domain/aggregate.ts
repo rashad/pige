@@ -1,8 +1,8 @@
-import type { TimeEntry } from "../solidtime/types.js";
 import type { Client, ClientId } from "../config/schema.js";
+import type { TimeEntry } from "../solidtime/types.js";
 import { hoursToDays, secondsToHours } from "./convert.js";
-import { formatISODate, isWeekend, eachDayInRange, type DateRange } from "./week.js";
-import { isHoliday, holidayName } from "./holidays.js";
+import { holidayName, isHoliday } from "./holidays.js";
+import { type DateRange, eachDayInRange, formatISODate, isWeekend } from "./week.js";
 
 export const OTHERS_ID = "__others" as const;
 

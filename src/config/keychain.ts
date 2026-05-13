@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile, chmod } from "node:fs/promises";
+import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { defaultConfigDir } from "./store.js";
 
@@ -80,10 +80,16 @@ export async function setToken(token: string): Promise<{ backend: "keychain" | "
 export async function deleteToken(): Promise<void> {
   const mod = await loadKeyring();
   if (mod) {
-    try { makeEntry(mod).deletePassword(); } catch { /* ignore */ }
+    try {
+      makeEntry(mod).deletePassword();
+    } catch {
+      /* ignore */
+    }
   }
   try {
     const { unlink } = await import("node:fs/promises");
     await unlink(fallbackTokenPath());
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }
