@@ -14,6 +14,12 @@ async function main() {
   const fresh = args.includes("--fresh");
   const cmd = args.find((a) => !a.startsWith("--")) ?? "menu";
 
+  const knownCmds = new Set(["config", "menu", "today", "week", "cal", "sync", "status"]);
+  if (!knownCmds.has(cmd)) {
+    console.error(`Commande inconnue : ${cmd}`);
+    process.exit(2);
+  }
+
   if (cmd === "config") {
     await runConfig();
     return;
