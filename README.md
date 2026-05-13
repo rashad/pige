@@ -6,10 +6,10 @@ A small terminal calendar for freelance day tracking, built on top of [Solidtime
 
 ```
   ╭──────────────────────────────────────────────────────────╮
-  │  pige · Mai 2026                       13 / 22 jours     │
+  │  pige · May 2026                       13 / 22 days      │
   ╰──────────────────────────────────────────────────────────╯
 
-       Lun   Mar   Mer   Jeu   Ven   Sam   Dim
+       Mon   Tue   Wed   Thu   Fri   Sat   Sun
 
                           ▓ 1   ▓ 2   · 3   · 4
        ▓ 5   ▓ 6   ▒ 7   ▓ 8   ▓ 9   ·10   ·11
@@ -17,19 +17,19 @@ A small terminal calendar for freelance day tracking, built on top of [Solidtime
        ▓19   ▓20   ▒21   ▓22   ▓23   ·24   ·25
        ▓26   ▓27   ▓28   ▒29   ▒30   ·31
 
-  ── Ce mois ───────────────────────────────────────────────
+  ── This month ────────────────────────────────────────────
 
-    ▓ Acme       8.5 j   ████████▌░░░░░░    /15     57 %
-    ▒ Globex     6.0 j   ███████▎░░░░░░░    /10     60 %
+    ▓ Acme       8.5 d   ████████▌░░░░░░    /15     57 %
+    ▒ Globex     6.0 d   ███████▎░░░░░░░    /10     60 %
 
-  ── Semaine en cours (S20) ────────────────────────────────
+  ── Current week (W20) ────────────────────────────────────
 
-    ▓ Acme       2.5 / 3.0 j   ████████████░░░░   −0.5
-    ▒ Globex     1.5 / 2.0 j   ██████████░░░░░░   −0.5
-                 Total semaine : 4.0 j
+    ▓ Acme       2.5 / 3.0 d   ████████████░░░░   −0.5
+    ▒ Globex     1.5 / 2.0 d   ██████████░░░░░░   −0.5
+                 Week total: 4.0 d
 ```
 
-(Real output is 24-bit truecolor cells with Catppuccin-inspired pastels — the blocks above are just an approximation. Example shown in French; switch to English with `pige config`.)
+(Real output is 24-bit truecolor cells with Catppuccin-inspired pastels — the blocks above are just an approximation. Example shown in English; switch to French with `pige config`.)
 
 ## Why
 
