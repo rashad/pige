@@ -3,10 +3,33 @@
   "version": "0.1.0",
   "description": "Terminal calendar for freelance day tracking on top of Solidtime",
   "license": "MIT",
+  "author": "Rashad Karanouh <rashad.karanouh@gmail.com>",
+  "homepage": "https://github.com/rashad/pige#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rashad/pige.git"
+  },
+  "bugs": {
+    "url": "https://github.com/rashad/pige/issues"
+  },
+  "keywords": [
+    "freelance",
+    "solidtime",
+    "cli",
+    "calendar",
+    "time-tracking",
+    "tjm",
+    "terminal"
+  ],
   "type": "module",
   "bin": {
     "pige": "./dist/cli.js"
   },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
   "scripts": {
     "dev": "tsx src/cli.ts",
     "build": "tsup src/cli.ts --format esm --target node20 --clean --shims",
@@ -17,6 +40,7 @@
     "format": "biome format --write",
     "check": "biome check",
     "check:fix": "biome check --write",
+    "prepare": "npm run build",
     "link:local": "npm run build && npm link"
   },
   "engines": {

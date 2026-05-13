@@ -1,5 +1,8 @@
 # pige
 
+[![ci](https://github.com/rashad/pige/actions/workflows/ci.yml/badge.svg)](https://github.com/rashad/pige/actions/workflows/ci.yml)
+[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
+
 A small terminal calendar for freelance day tracking, built on top of [Solidtime](https://solidtime.io).
 
 `pige` reads your Solidtime time entries and renders them as a monthly heatmap calendar, a current-week balance against per-client targets, and a quick "today" summary — all in your terminal. Bilingual UI (English or French — you pick during config; default is English). The name comes from French slang for a freelance gig.
