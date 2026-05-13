@@ -6,7 +6,7 @@
 
 ## 1. Context
 
-The user invoices 2–3 freelance clients in parallel. Fine-grained time tracking already happens in **Solidtime** (cloud, `app.solidtime.io`), which exposes hours per project. What's missing is a **consolidated monthly calendar view** to verify how time is split across clients and ensure none of them is short-changed, plus a **fast daily summary** in the terminal.
+The user invoices freelance work and tracks time in **Solidtime** (cloud, `app.solidtime.io`), which exposes hours per project. What's missing is a **consolidated monthly calendar view** to see how time is allocated against weekly targets, plus a **fast daily summary** in the terminal.
 
 No new tracker is needed — Solidtime stays the source of truth. `pige` is a read / aggregate / render layer on top of it.
 

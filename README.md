@@ -36,7 +36,7 @@ A small terminal calendar for freelance day tracking, built on top of [Solidtime
 
 ## Why
 
-You track per-second time in Solidtime, but you bill in days. Solidtime answers *"how many hours per project?"* — `pige` answers *"how many billable days per client this month, and am I balancing my parallel clients correctly this week?"*
+You track per-second time in Solidtime, but you bill in days. Solidtime answers *"how many hours per project?"* — `pige` answers *"how many billable days per client this month, and how does that compare to my weekly target?"*
 
 ## Requirements
 
