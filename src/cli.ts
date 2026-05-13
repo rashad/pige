@@ -2,6 +2,7 @@
 import { buildEntrySource } from "./cli/entrySource.js";
 import { runCal } from "./commands/cal.js";
 import { runConfig } from "./commands/config.js";
+import { runHelp } from "./commands/help.js";
 import { runMenu } from "./commands/menu.js";
 import { runStatus } from "./commands/status.js";
 import { runSync } from "./commands/sync.js";
@@ -12,6 +13,12 @@ import { createT, detectSystemLocale, normalizeLocale } from "./i18n.js";
 
 async function main() {
   const args = process.argv.slice(2);
+
+  if (args.includes("--help") || args.includes("-h") || args[0] === "help") {
+    runHelp();
+    return;
+  }
+
   const fresh = args.includes("--fresh");
   const cmd = args.find((a) => !a.startsWith("--")) ?? "menu";
 

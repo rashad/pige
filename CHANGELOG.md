@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `pige help`, `pige --help`, and `pige -h` print a usage block listing commands, flags, and environment variables (English only — help text is not localised).
+
 ## [0.2.0] — 2026-05-13
 
 ### Added
