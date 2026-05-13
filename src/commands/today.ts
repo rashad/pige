@@ -29,9 +29,9 @@ export async function runToday(ctx: Context, src: EntrySource): Promise<void> {
   if (todayAgg && todayAgg.totalDays > 0) {
     for (const c of ctx.config.clients) {
       const v = todaySum.get(c.id) ?? 0;
-      if (v > 0) console.log(`   ${accent(c.label.padEnd(10))} ${v.toFixed(2)} j`);
+      if (v > 0) console.log(`   ${accent(c.label.padEnd(10))} ${v.toFixed(2)} ${ctx.t("unit.day")}`);
     }
-    console.log(`   ${dim(ctx.t("today.total"))} ${accent(todayAgg.totalDays.toFixed(2))} j`);
+    console.log(`   ${dim(ctx.t("today.total"))} ${accent(todayAgg.totalDays.toFixed(2))} ${ctx.t("unit.day")}`);
   } else {
     console.log(`   ${dim(ctx.t("today.nothing"))}`);
   }

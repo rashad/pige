@@ -7,7 +7,7 @@ import { dim, accent } from "../render/palette.js";
 export async function runSync(ctx: Context): Promise<void> {
   const token = await getToken();
   if (!token) {
-    console.error(ctx.t("errors.tokenAbsentPrefixed"));
+    console.error(`❌ ${ctx.t("errors.tokenAbsent")}`);
     process.exit(1);
   }
   const client = createSolidtimeClient({
@@ -16,9 +16,9 @@ export async function runSync(ctx: Context): Promise<void> {
     organizationId: ctx.config.solidtime.organizationId,
   });
 
-  const to = new Date(ctx.now);
-  const from = new Date(ctx.now);
-  from.setDate(from.getDate() - 90);
+  // Match the window entrySource expects: [-60d, +30d] around now.
+  const from = new Date(ctx.now); from.setDate(from.getDate() - 60);
+  const to   = new Date(ctx.now); to.setDate(to.getDate() + 30);
 
   const fmt = (d: Date) =>
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;

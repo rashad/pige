@@ -8,11 +8,12 @@ const clients: Client[] = [
   { id: "globex", solidtimeProjectIds: ["p2"], label: "Globex", color: "green", targetDaysPerWeek: 2 },
 ];
 
+let nextEntryId = 0;
 function entry(start: string, durationSec: number, projectId: string): TimeEntry {
   const startDate = new Date(start);
   const endDate = new Date(startDate.getTime() + durationSec * 1000);
   return {
-    id: Math.random().toString(),
+    id: `e${++nextEntryId}`,
     start: startDate.toISOString(),
     end: endDate.toISOString(),
     duration: durationSec,

@@ -33,6 +33,9 @@ const fr = {
   // calendar
   "calendar.daysHud": "{worked} / {business} jours",
 
+  // units
+  "unit.day": "j",
+
   // sync
   "sync.start": "Synchronisation…",
   "sync.done": "{n} entries synced.",
@@ -74,7 +77,6 @@ const fr = {
 
   // errors / bootstrap
   "errors.tokenAbsent": "Token Solidtime absent. Lance `pige config`.",
-  "errors.tokenAbsentPrefixed": "❌ Token Solidtime absent. Lance `pige config`.",
   "errors.offline": "⚠ Mode hors-ligne, données du {timestamp}",
   "errors.unknownCmd": "Commande inconnue : {cmd}",
   "errors.noConfig": "Aucune configuration. Lancement du wizard…",
@@ -110,6 +112,9 @@ const en: Record<keyof typeof fr, string> = {
 
   // calendar
   "calendar.daysHud": "{worked} / {business} days",
+
+  // units
+  "unit.day": "d",
 
   // sync
   "sync.start": "Syncing…",
@@ -152,7 +157,6 @@ const en: Record<keyof typeof fr, string> = {
 
   // errors / bootstrap
   "errors.tokenAbsent": "Solidtime token missing. Run `pige config`.",
-  "errors.tokenAbsentPrefixed": "❌ Solidtime token missing. Run `pige config`.",
   "errors.offline": "⚠ Offline mode, data from {timestamp}",
   "errors.unknownCmd": "Unknown command: {cmd}",
   "errors.noConfig": "No configuration. Starting wizard…",

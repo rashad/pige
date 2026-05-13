@@ -19,7 +19,7 @@ export function renderMonthSummary(
     const bar = progressBar(days, Math.max(target, 1), 16, c.color);
     const pct = target > 0 ? `${Math.round((days / target) * 100)} %` : "—";
     lines.push(
-      `   ${accent(c.label.padEnd(10))} ${days.toFixed(1).padStart(5)} j   ${bar}  ${dim(`/${target}`)}  ${dim(pct.padStart(5))}`,
+      `   ${accent(c.label.padEnd(10))} ${days.toFixed(1).padStart(5)} ${t("unit.day")}   ${bar}  ${dim(`/${target}`)}  ${dim(pct.padStart(5))}`,
     );
   }
   return lines.join("\n");
@@ -44,9 +44,9 @@ export function renderWeekSummary(
       delta < 0   ? dim(`−${Math.abs(delta).toFixed(1)}`) :
                     accent(`+${delta.toFixed(1)}`);
     lines.push(
-      `   ${accent(c.label.padEnd(10))} ${days.toFixed(1)} / ${tgt.toFixed(1)} j   ${bar}  ${deltaStr}`,
+      `   ${accent(c.label.padEnd(10))} ${days.toFixed(1)} / ${tgt.toFixed(1)} ${t("unit.day")}   ${bar}  ${deltaStr}`,
     );
   }
-  lines.push("", `   ${dim(t("summary.weekTotal"))} ${accent(total.toFixed(1))} j`);
+  lines.push("", `   ${dim(t("summary.weekTotal"))} ${accent(total.toFixed(1))} ${t("unit.day")}`);
   return lines.join("\n");
 }
