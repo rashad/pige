@@ -32,7 +32,7 @@ describe("aggregateEntries", () => {
     const entries = [entry("2026-05-11T08:00:00", 7 * 3600, "p1")];
     const out = aggregateEntries(entries, range, clients, { hoursPerDay: 7, holidaysRegion: "FR" });
     expect(out).toHaveLength(7);
-    const mon = out[0];
+    const mon = out[0]!;
     expect(mon.date).toBe("2026-05-11");
     expect(mon.perClient.get("acme")).toBe(1);
     expect(mon.totalDays).toBe(1);
@@ -73,7 +73,7 @@ describe("aggregateEntries", () => {
       entry("2026-05-11T13:00:00", 3.5 * 3600, "p1"),
     ];
     const out = aggregateEntries(entries, range, clients, { hoursPerDay: 7, holidaysRegion: "FR" });
-    expect(out[0].perClient.get("acme")).toBe(1);
+    expect(out[0]!.perClient.get("acme")).toBe(1);
   });
 
   it("running entry (end null) is ignored", () => {
@@ -87,6 +87,6 @@ describe("aggregateEntries", () => {
       billable: true,
     };
     const out = aggregateEntries([e], range, clients, { hoursPerDay: 7, holidaysRegion: "FR" });
-    expect(out[0].totalDays).toBe(0);
+    expect(out[0]!.totalDays).toBe(0);
   });
 });
