@@ -11,8 +11,7 @@
     "isolatedModules": true,
     "verbatimModuleSyntax": false,
     "outDir": "./dist",
-    "rootDir": "./src",
-    "declaration": false,
+"declaration": false,
     "sourceMap": true
   },
   "include": ["src/**/*", "tests/**/*"]
