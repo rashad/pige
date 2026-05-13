@@ -2,7 +2,11 @@ import { describe, it, expect } from "vitest";
 import { renderMonthlyCalendar } from "../../src/render/calendar.js";
 import type { AggregatedDay } from "../../src/domain/aggregate.js";
 import type { Client } from "../../src/config/schema.js";
+import { createT } from "../../src/i18n.js";
 import stripAnsi from "../helpers/stripAnsi.js";
+
+const t = createT("fr");
+const locale = "fr" as const;
 
 const clients: Client[] = [
   { id: "acme", solidtimeProjectIds: ["p1"], label: "Acme", color: "blue", targetDaysPerWeek: 3 },
@@ -23,7 +27,7 @@ describe("renderMonthlyCalendar", () => {
       const date = new Date(2026, 4, d);
       days.push(emptyDay(`2026-05-${String(d).padStart(2, "0")}`, (date.getDay() + 6) % 7, [0,6].includes(date.getDay())));
     }
-    const out = stripAnsi(renderMonthlyCalendar(2026, 5, days, clients));
+    const out = stripAnsi(renderMonthlyCalendar(2026, 5, days, clients, t, locale));
     expect(out).toContain("Mai 2026");
     expect(out).toContain("Lun");
     expect(out).toContain("Dim");
@@ -35,7 +39,7 @@ describe("renderMonthlyCalendar", () => {
       const date = new Date(2026, 4, d);
       days.push(emptyDay(`2026-05-${String(d).padStart(2, "0")}`, (date.getDay() + 6) % 7, [0,6].includes(date.getDay())));
     }
-    const out = stripAnsi(renderMonthlyCalendar(2026, 5, days, clients));
+    const out = stripAnsi(renderMonthlyCalendar(2026, 5, days, clients, t, locale));
     // May 1 2026 is a Friday. The line containing " 1" should also contain " 2" (Sat) and " 3" (Sun).
     const line = out.split("\n").find((l) => / 1 /.test(l) || / 1$/.test(l));
     expect(line).toBeTruthy();
@@ -56,7 +60,7 @@ describe("renderMonthlyCalendar", () => {
       }
       days.push(day);
     }
-    const out = stripAnsi(renderMonthlyCalendar(2026, 5, days, clients));
+    const out = stripAnsi(renderMonthlyCalendar(2026, 5, days, clients, t, locale));
     expect(out).toMatch(/11 \/ 21 jours|11\/21/);
   });
 });

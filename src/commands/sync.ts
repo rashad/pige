@@ -7,7 +7,7 @@ import { dim, accent } from "../render/palette.js";
 export async function runSync(ctx: Context): Promise<void> {
   const token = await getToken();
   if (!token) {
-    console.error("❌ Token Solidtime absent. Lance `pige config`.");
+    console.error(ctx.t("errors.tokenAbsentPrefixed"));
     process.exit(1);
   }
   const client = createSolidtimeClient({
@@ -23,7 +23,7 @@ export async function runSync(ctx: Context): Promise<void> {
   const fmt = (d: Date) =>
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
-  console.log(dim("Synchronisation…"));
+  console.log(dim(ctx.t("sync.start")));
   const entries = await client.fetchTimeEntries(fmt(from), fmt(to));
   await writeCache(defaultCachePath(), {
     version: CACHE_VERSION,
@@ -32,5 +32,5 @@ export async function runSync(ctx: Context): Promise<void> {
     windowTo: fmt(to),
     entries,
   });
-  console.log(`${accent("✓")} ${entries.length} entries synced.`);
+  console.log(`${accent("✓")} ${ctx.t("sync.done", { n: entries.length })}`);
 }

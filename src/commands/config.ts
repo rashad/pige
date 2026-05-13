@@ -4,6 +4,7 @@ import { defaultConfig, type Client, type ColorKey } from "../config/schema.js";
 import { setToken, getToken } from "../config/keychain.js";
 import { createSolidtimeClient } from "../solidtime/client.js";
 import { accent, dim } from "../render/palette.js";
+import { type Locale, createT, normalizeLocale, detectSystemLocale } from "../i18n.js";
 
 const COLORS: ColorKey[] = ["blue", "green", "amber", "pink", "cyan", "purple"];
 
@@ -12,19 +13,36 @@ function slugify(s: string): string {
 }
 
 export async function runConfig(): Promise<void> {
-  console.log(accent("pige · configuration"));
+  // Detect initial locale
+  const existingCfgEarly = await loadConfig();
+  let locale: Locale = existingCfgEarly
+    ? normalizeLocale(existingCfgEarly.locale)
+    : detectSystemLocale();
+
+  const langChoice = await select({
+    message: "Language / Langue ?",
+    default: locale,
+    choices: [
+      { name: "Français", value: "fr" as Locale },
+      { name: "English",  value: "en" as Locale },
+    ],
+  });
+  locale = langChoice;
+  let t = createT(locale);
+
+  console.log(accent(t("config.title")));
   console.log();
 
   const existing = await getToken();
   let token: string | null = existing;
   if (existing) {
-    const reuse = await confirm({ message: "Un token est déjà stocké. Garder ce token ?", default: true });
+    const reuse = await confirm({ message: t("config.tokenReuse"), default: true });
     if (!reuse) token = null;
   }
   if (!token) {
-    token = await password({ message: "Token API Solidtime :", mask: "•" });
+    token = await password({ message: t("config.tokenInput"), mask: "•" });
     const stored = await setToken(token);
-    console.log(dim(`   → stocké via ${stored.backend}`));
+    console.log(dim(t("config.tokenStored", { backend: stored.backend })));
   }
 
   const tmpClient = createSolidtimeClient({
@@ -37,22 +55,22 @@ export async function runConfig(): Promise<void> {
   try {
     me = await tmpClient.getMe();
   } catch (e: unknown) {
-    console.error(`❌ Token rejeté par Solidtime : ${(e as Error).message}`);
+    console.error(t("config.tokenRejected", { msg: (e as Error).message }));
     process.exit(1);
   }
   if (!me) process.exit(1);
-  console.log(dim(`   ✓ connecté en tant que ${me.email}`));
+  console.log(dim(t("config.connected", { email: me.email })));
 
   const orgs = await tmpClient.listOrganizations();
   if (orgs.length === 0) {
-    console.error("❌ Aucune organisation Solidtime trouvée.");
+    console.error(t("config.noOrgs"));
     process.exit(1);
   }
   const orgId =
     orgs.length === 1
       ? orgs[0]!.id
       : await select({
-          message: "Organisation :",
+          message: t("config.org"),
           choices: orgs.map((o) => ({ name: o.name, value: o.id })),
         });
 
@@ -63,7 +81,7 @@ export async function runConfig(): Promise<void> {
   });
   const projects = await realClient.listProjects();
   if (projects.length === 0) {
-    console.error("❌ Aucun projet dans cette organisation.");
+    console.error(t("config.noProjects"));
     process.exit(1);
   }
 
@@ -76,29 +94,29 @@ export async function runConfig(): Promise<void> {
     const addMore =
       clients.length === 0
         ? true
-        : await confirm({ message: "Ajouter un autre client ?", default: false });
+        : await confirm({ message: t("config.addClient"), default: false });
     if (!addMore) break;
 
     const picked: string[] = await checkbox({
-      message: "Quels projets Solidtime appartiennent à ce client ?",
+      message: t("config.pickProjects"),
       choices: remaining.map((p) => ({ name: p.name, value: p.id })),
     });
     if (picked.length === 0) continue;
 
     const firstPickedId = picked[0]!;
-    const defaultLabel = projects.find((p) => p.id === firstPickedId)?.name ?? "Client";
+    const defaultLabel = projects.find((p) => p.id === firstPickedId)?.name ?? t("config.clientDefault");
     const label = await input({
-      message: "Nom court du client :",
+      message: t("config.clientLabel"),
       default: defaultLabel,
     });
     const color = (await select({
-      message: "Couleur :",
+      message: t("config.color"),
       choices: COLORS.map((c) => ({ name: c, value: c })),
     })) as ColorKey;
     const targetStr = await input({
-      message: "Objectif jours / semaine :",
+      message: t("config.target"),
       default: "2.5",
-      validate: (s) => !Number.isNaN(parseFloat(s)) || "Nombre attendu",
+      validate: (s) => !Number.isNaN(parseFloat(s)) || t("config.validate.number"),
     });
 
     clients.push({
@@ -115,9 +133,9 @@ export async function runConfig(): Promise<void> {
   }
 
   const hoursStr = await input({
-    message: "Heures par jour facturé (règle 7h=1j) :",
+    message: t("config.hoursPerDay"),
     default: String(existingCfg.conversion.hoursPerDay),
-    validate: (s) => parseFloat(s) > 0 || "Nombre positif attendu",
+    validate: (s) => parseFloat(s) > 0 || t("config.validate.positive"),
   });
 
   const cfg = {
@@ -125,8 +143,9 @@ export async function runConfig(): Promise<void> {
     solidtime: { ...existingCfg.solidtime, organizationId: orgId },
     conversion: { hoursPerDay: parseFloat(hoursStr) },
     clients,
+    locale,
   };
   await saveConfig(configPath(), cfg);
   console.log();
-  console.log(`${accent("✓")} Configuration sauvegardée dans ${dim(configPath())}`);
+  console.log(`${accent("✓")} ${t("config.saved", { path: configPath() })}`);
 }

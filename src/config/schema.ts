@@ -32,7 +32,7 @@ export function defaultConfig(orgId: string): Config {
     solidtime: { baseUrl: "https://app.solidtime.io/api", organizationId: orgId },
     conversion: { hoursPerDay: 7 },
     clients: [],
-    locale: "fr-FR",
+    locale: "en",
     holidaysRegion: "FR",
   };
 }

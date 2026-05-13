@@ -5,8 +5,7 @@ import { aggregateEntries, sumPerClient } from "../domain/aggregate.js";
 import { renderWeekSummary } from "../render/summary.js";
 import { sectionSeparator } from "../render/box.js";
 import { accent, dim, clientCell, neutralCell, emptyCell } from "../render/palette.js";
-
-const WD_FR = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
+import { WEEKDAYS } from "../i18n.js";
 
 export async function runWeek(ctx: Context, src: EntrySource, opts?: { date?: Date }): Promise<void> {
   const anchor = opts?.date ?? ctx.now;
@@ -18,12 +17,12 @@ export async function runWeek(ctx: Context, src: EntrySource, opts?: { date?: Da
   });
   const { week } = isoWeekOf(anchor);
 
-  console.log(sectionSeparator(`Semaine ${week}`, 60));
+  console.log(sectionSeparator(ctx.t("week.title", { week }), 60));
   console.log();
 
   for (const d of days) {
     const dn = parseInt(d.date.slice(-2), 10);
-    const wdName = WD_FR[d.weekday] ?? "?";
+    const wdName = WEEKDAYS[ctx.locale][d.weekday] ?? "?";
     const label = `${wdName} ${String(dn).padStart(2, " ")}`;
     let cell: string;
     if (d.isHoliday) cell = neutralCell(` ${dn} `);
@@ -40,10 +39,10 @@ export async function runWeek(ctx: Context, src: EntrySource, opts?: { date?: Da
       })
       .filter((x): x is string => x !== null)
       .join("  ");
-    console.log(`   ${cell}  ${accent(label)}   ${dim(fractions || "—")}`);
+    console.log(`   ${cell}  ${accent(label)}   ${dim(fractions || ctx.t("week.empty"))}`);
   }
 
   console.log();
   const totals = sumPerClient(days);
-  console.log(renderWeekSummary(totals, ctx.config.clients, week));
+  console.log(renderWeekSummary(totals, ctx.config.clients, week, ctx.t));
 }

@@ -16,12 +16,12 @@ export async function runCal(ctx: Context, src: EntrySource, opts: CalOptions): 
     holidaysRegion: ctx.config.holidaysRegion,
   });
 
-  console.log(renderMonthlyCalendar(opts.year, opts.month, days, ctx.config.clients));
+  console.log(renderMonthlyCalendar(opts.year, opts.month, days, ctx.config.clients, ctx.t, ctx.locale));
   console.log();
 
   const totals = sumPerClient(days);
   const targets = new Map(ctx.config.clients.map((c) => [c.id, c.targetDaysPerWeek * 4.33] as const));
-  console.log(renderMonthSummary(totals, targets, ctx.config.clients));
+  console.log(renderMonthSummary(totals, targets, ctx.config.clients, ctx.t));
   console.log();
 
   if (ctx.now.getFullYear() === opts.year && ctx.now.getMonth() + 1 === opts.month) {
@@ -32,6 +32,6 @@ export async function runCal(ctx: Context, src: EntrySource, opts: CalOptions): 
     });
     const weekTotals = sumPerClient(weekDays);
     const { week } = isoWeekOf(ctx.now);
-    console.log(renderWeekSummary(weekTotals, ctx.config.clients, week));
+    console.log(renderWeekSummary(weekTotals, ctx.config.clients, week, ctx.t));
   }
 }

@@ -14,7 +14,7 @@ export function buildEntrySource(ctx: Context): EntrySource {
         return filterByRange(cached.entries, fromYmd, toYmd);
       }
       const token = await getToken();
-      if (!token) throw new Error("Token Solidtime absent. Lance `pige config`.");
+      if (!token) throw new Error(ctx.t("errors.tokenAbsent"));
       const client = createSolidtimeClient({
         baseUrl: ctx.config.solidtime.baseUrl,
         token,
@@ -34,7 +34,7 @@ export function buildEntrySource(ctx: Context): EntrySource {
         return filterByRange(entries, fromYmd, toYmd);
       } catch (e) {
         if (cached) {
-          console.error(`⚠ Mode hors-ligne, données du ${cached.fetchedAt}`);
+          console.error(ctx.t("errors.offline", { timestamp: cached.fetchedAt }));
           return filterByRange(cached.entries, fromYmd, toYmd);
         }
         throw e;

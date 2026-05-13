@@ -8,6 +8,7 @@ import { runSync } from "./commands/sync.js";
 import { runStatus } from "./commands/status.js";
 import { runConfig } from "./commands/config.js";
 import { buildEntrySource } from "./cli/entrySource.js";
+import { createT, normalizeLocale, detectSystemLocale } from "./i18n.js";
 
 async function main() {
   const args = process.argv.slice(2);
@@ -16,7 +17,9 @@ async function main() {
 
   const knownCmds = new Set(["config", "menu", "today", "week", "cal", "sync", "status"]);
   if (!knownCmds.has(cmd)) {
-    console.error(`Commande inconnue : ${cmd}`);
+    const bootLocale = detectSystemLocale();
+    const bootT = createT(bootLocale);
+    console.error(bootT("errors.unknownCmd", { cmd }));
     process.exit(2);
   }
 
@@ -27,12 +30,16 @@ async function main() {
 
   const config = await loadConfig();
   if (!config) {
-    console.log("Aucune configuration. Lancement du wizard…");
+    const bootLocale = detectSystemLocale();
+    const bootT = createT(bootLocale);
+    console.log(bootT("errors.noConfig"));
     await runConfig();
     return;
   }
 
-  const ctx = { config, now: new Date(), fresh };
+  const locale = normalizeLocale(config.locale);
+  const t = createT(locale);
+  const ctx = { config, now: new Date(), fresh, locale, t };
   const src = buildEntrySource(ctx);
 
   switch (cmd) {
@@ -77,9 +84,12 @@ async function main() {
     case "status":
       await runStatus(ctx);
       break;
-    default:
-      console.error(`Commande inconnue : ${cmd}`);
+    default: {
+      const bootLocale = detectSystemLocale();
+      const bootT = createT(bootLocale);
+      console.error(bootT("errors.unknownCmd", { cmd }));
       process.exit(2);
+    }
   }
 }
 

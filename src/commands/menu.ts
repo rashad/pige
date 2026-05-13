@@ -14,20 +14,20 @@ type Choice = "today" | "week" | "cal" | "sync" | "config" | "status" | "quit";
 export async function runMenu(ctx: Context, src: EntrySource): Promise<void> {
   while (true) {
     console.log();
-    console.log(accent("pige"));
+    console.log(accent(ctx.t("menu.brand")));
     const choice = await expand<Choice>({
-      message: "Que veux-tu voir ?",
+      message: ctx.t("menu.prompt"),
       expanded: true,
       default: "t",
       choices: [
-        { key: "t", name: "Aujourd'hui", value: "today" },
-        { key: "w", name: "Semaine en cours", value: "week" },
-        { key: "c", name: "Calendrier du mois", value: "cal" },
+        { key: "t", name: ctx.t("menu.today"), value: "today" },
+        { key: "w", name: ctx.t("menu.week"), value: "week" },
+        { key: "c", name: ctx.t("menu.cal"), value: "cal" },
         new Separator(),
-        { key: "s", name: "Synchroniser maintenant", value: "sync" },
-        { key: "g", name: "Configurer", value: "config" },
-        { key: "i", name: "Statut", value: "status" },
-        { key: "q", name: "Quitter", value: "quit" },
+        { key: "s", name: ctx.t("menu.sync"), value: "sync" },
+        { key: "g", name: ctx.t("menu.config"), value: "config" },
+        { key: "i", name: ctx.t("menu.status"), value: "status" },
+        { key: "q", name: ctx.t("menu.quit"), value: "quit" },
       ],
     });
 
@@ -44,7 +44,7 @@ export async function runMenu(ctx: Context, src: EntrySource): Promise<void> {
     }
 
     console.log();
-    const again = await confirm({ message: "Retour au menu ?", default: true });
+    const again = await confirm({ message: ctx.t("menu.back"), default: true });
     if (!again) return;
   }
 }

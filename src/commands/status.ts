@@ -6,16 +6,16 @@ import { configPath } from "../config/store.js";
 import { accent, dim } from "../render/palette.js";
 
 export async function runStatus(ctx: Context): Promise<void> {
-  console.log(accent("pige · statut"));
+  console.log(accent(ctx.t("status.title")));
   console.log();
 
-  console.log(`   ${dim("Config :")} ${configPath()}`);
-  console.log(`   ${dim("Org    :")} ${ctx.config.solidtime.organizationId}`);
-  console.log(`   ${dim("Clients :")} ${ctx.config.clients.length}`);
+  console.log(`   ${dim(ctx.t("status.config"))} ${configPath()}`);
+  console.log(`   ${dim(ctx.t("status.org"))} ${ctx.config.solidtime.organizationId}`);
+  console.log(`   ${dim(ctx.t("status.clients"))} ${ctx.config.clients.length}`);
 
   const tok = await getToken();
   if (!tok) {
-    console.log(`   ${dim("Token  :")} ❌ absent`);
+    console.log(`   ${dim(ctx.t("status.token"))} ${ctx.t("status.tokenAbsent")}`);
   } else {
     try {
       const c = createSolidtimeClient({
@@ -24,9 +24,9 @@ export async function runStatus(ctx: Context): Promise<void> {
         organizationId: ctx.config.solidtime.organizationId,
       });
       const me = await c.getMe();
-      console.log(`   ${dim("Token  :")} ✓ valide (${me.email})`);
+      console.log(`   ${dim(ctx.t("status.token"))} ${ctx.t("status.tokenValid", { email: me.email })}`);
     } catch {
-      console.log(`   ${dim("Token  :")} ❌ rejeté par Solidtime`);
+      console.log(`   ${dim(ctx.t("status.token"))} ${ctx.t("status.tokenRejected")}`);
     }
   }
 
@@ -34,8 +34,8 @@ export async function runStatus(ctx: Context): Promise<void> {
   if (cache) {
     const ageMs = Date.now() - new Date(cache.fetchedAt).getTime();
     const ageMin = Math.round(ageMs / 60000);
-    console.log(`   ${dim("Cache  :")} ${cache.entries.length} entries, sync il y a ${ageMin} min`);
+    console.log(`   ${dim(ctx.t("status.cache"))} ${ctx.t("status.cacheEntries", { n: cache.entries.length, min: ageMin })}`);
   } else {
-    console.log(`   ${dim("Cache  :")} vide`);
+    console.log(`   ${dim(ctx.t("status.cache"))} ${ctx.t("status.cacheEmpty")}`);
   }
 }

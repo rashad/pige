@@ -24,20 +24,20 @@ export async function runToday(ctx: Context, src: EntrySource): Promise<void> {
   const todayAgg = days.find((d) => d.date === todayIso);
   const todaySum = todayAgg ? new Map(todayAgg.perClient) : new Map<string, number>();
 
-  console.log(sectionSeparator("Aujourd'hui", 60));
+  console.log(sectionSeparator(ctx.t("today.title"), 60));
   console.log();
   if (todayAgg && todayAgg.totalDays > 0) {
     for (const c of ctx.config.clients) {
       const v = todaySum.get(c.id) ?? 0;
       if (v > 0) console.log(`   ${accent(c.label.padEnd(10))} ${v.toFixed(2)} j`);
     }
-    console.log(`   ${dim("Total :")} ${accent(todayAgg.totalDays.toFixed(2))} j`);
+    console.log(`   ${dim(ctx.t("today.total"))} ${accent(todayAgg.totalDays.toFixed(2))} j`);
   } else {
-    console.log(`   ${dim("Rien enregistré aujourd'hui.")}`);
+    console.log(`   ${dim(ctx.t("today.nothing"))}`);
   }
   console.log();
 
   const weekTotals = sumPerClient(days);
   const { week: wk } = isoWeekOf(today);
-  console.log(renderWeekSummary(weekTotals, ctx.config.clients, wk));
+  console.log(renderWeekSummary(weekTotals, ctx.config.clients, wk, ctx.t));
 }
