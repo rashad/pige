@@ -2,6 +2,7 @@
   "name": "pige",
   "version": "0.1.0",
   "description": "Terminal calendar for freelance day tracking on top of Solidtime",
+  "license": "MIT",
   "type": "module",
   "bin": {
     "pige": "./dist/cli.js"
