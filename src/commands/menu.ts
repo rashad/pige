@@ -1,4 +1,4 @@
-import { select, confirm } from "@inquirer/prompts";
+import { expand, confirm, Separator } from "@inquirer/prompts";
 import type { Context } from "./context.js";
 import type { EntrySource } from "./today.js";
 import { runToday } from "./today.js";
@@ -15,18 +15,21 @@ export async function runMenu(ctx: Context, src: EntrySource): Promise<void> {
   while (true) {
     console.log();
     console.log(accent("freelance"));
-    const choice = (await select<Choice>({
+    const choice = await expand<Choice>({
       message: "Que veux-tu voir ?",
+      expanded: true,
+      default: "t",
       choices: [
-        { name: "Aujourd'hui              (t)", value: "today" },
-        { name: "Semaine en cours         (w)", value: "week" },
-        { name: "Calendrier du mois       (c)", value: "cal" },
-        { name: "Synchroniser maintenant  (s)", value: "sync" },
-        { name: "Configurer               (g)", value: "config" },
-        { name: "Statut                   (i)", value: "status" },
-        { name: "Quitter                  (q)", value: "quit" },
+        { key: "t", name: "Aujourd'hui", value: "today" },
+        { key: "w", name: "Semaine en cours", value: "week" },
+        { key: "c", name: "Calendrier du mois", value: "cal" },
+        new Separator(),
+        { key: "s", name: "Synchroniser maintenant", value: "sync" },
+        { key: "g", name: "Configurer", value: "config" },
+        { key: "i", name: "Statut", value: "status" },
+        { key: "q", name: "Quitter", value: "quit" },
       ],
-    })) as Choice;
+    });
 
     if (choice === "quit") return;
 
