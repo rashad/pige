@@ -51,6 +51,16 @@ Things to reconsider:
 - Some holidays are "if it falls on Sunday, observe Monday" — does the current logic handle that the way the user expects?
 - Should regional variants matter (Alsace-Moselle has extra holidays)?
 
+## 7. In-progress timer inclusion
+
+Solidtime entries for a running timer have no `end` time yet — they're omitted from the current aggregation, so `pige today` (and the calendar/week views) under-report hours whenever a session is active. The fix is to detect open-ended entries and substitute `now` as their end time before aggregating.
+
+Open questions to settle:
+- Where does the substitution happen? Ideally in `domain/aggregate.ts` so all views benefit without changing each command.
+- The API may return running entries with `end: null` or omit the field entirely — confirm the Solidtime response shape and handle both.
+- Should a visual cue flag "includes an in-progress session" in the output (e.g. a trailing `…` on today's bar)?
+- Cache behaviour: an in-progress entry changes every minute, so the 5-minute TTL means the display can lag. Acceptable trade-off, or should `--fresh` be recommended in the docs for active sessions?
+
 ## 6. Billable time
 
 Solidtime entries already carry a `billable` boolean. We currently aggregate everything regardless. For users who flag billable vs internal time, surfacing this distinction in the terminal would be valuable.
