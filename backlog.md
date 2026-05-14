@@ -51,6 +51,17 @@ Things to reconsider:
 - Some holidays are "if it falls on Sunday, observe Monday" — does the current logic handle that the way the user expects?
 - Should regional variants matter (Alsace-Moselle has extra holidays)?
 
+## 8. Remaining time to quota in week view
+
+The week summary shows days logged per client but gives no signal on how far the user is from their `targetDaysPerWeek`. Surfacing the gap — ideally in hours, not just days — would turn the view into an actionable work planner.
+
+Open questions to settle:
+- Display format: `+2 h 15 m to go` next to the client row, or a separate "remaining" column? Should it flip to `−1 h 30 m over` when the target is exceeded?
+- Unit: hours + minutes is more useful than fractional days (e.g. `1.3 d` is hard to act on). Should the conversion use the configured `hoursPerDay`?
+- Week boundary: does "remaining" mean remaining in the current ISO week, or the next N working days (excluding holidays)?
+- Clients with no `targetDaysPerWeek` set — hide the field, show a dash, or prompt to configure?
+- Should `pige today` also show a daily remaining figure, or keep that to the week view?
+
 ## 7. In-progress timer inclusion
 
 Solidtime entries for a running timer have no `end` time yet — they're omitted from the current aggregation, so `pige today` (and the calendar/week views) under-report hours whenever a session is active. The fix is to detect open-ended entries and substitute `now` as their end time before aggregating.
