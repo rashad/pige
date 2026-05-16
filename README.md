@@ -101,6 +101,13 @@ pige config                      # re-run the wizard
 pige --fresh <cmd>               # bypass the cache for this call
 ```
 
+### Running timers
+
+If you have a Solidtime timer running, `pige today` includes its elapsed
+time up to the moment of the last fetch and marks the day with `…`. The
+fetch cache is 5 minutes long, so the displayed total can lag by a few
+minutes — use `pige today --fresh` for an up-to-the-second figure.
+
 ## Where data lives
 
 | What | Where |
