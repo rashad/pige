@@ -122,6 +122,15 @@ Override the config directory with `PIGE_DIR=…`. Provide the token via `PIGE_S
 
 `pige` converts hours to days linearly using a configurable `hoursPerDay` (default `7`). Edit it during `pige config` or directly in `config.json`.
 
+## Targets
+
+Each client's `targetDaysPerWeek` is the basis for both weekly and
+monthly expectations. Set `5` for full-time (you'll be expected every
+working day; weekends and public holidays are automatically excluded),
+or a smaller number for partial contracts. The monthly target shown by
+`pige cal` is `targetDaysPerWeek × (working days in the month) / 5`,
+so a holiday in the month reduces the expected total proportionally.
+
 ## Language
 
 The UI is available in **English** (default for new installs) and **French**. Your pick is stored in `~/.config/pige/config.json` under `locale` (`"en"` or `"fr"`).
