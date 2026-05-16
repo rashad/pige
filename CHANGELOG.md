@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `pige completion zsh` emits a static zsh completion script covering
+  every subcommand and flag. See README for install steps.
+
 ## [0.3.0] — 2026-05-13
 
 ### Added
