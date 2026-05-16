@@ -43,4 +43,24 @@ describe("runCal", () => {
     expect(out).toContain("Ce mois");
     expect(out).toContain("Semaine");
   });
+
+  it("monthly target is holiday-aware, not × 4.33", async () => {
+    const logs: string[] = [];
+    vi.spyOn(console, "log").mockImplementation((s: string) => {
+      logs.push(s);
+    });
+    await runCal(
+      { config: cfg, now: new Date(2026, 4, 13), fresh: false, locale: "fr", t: createT("fr") },
+      { fetchEntries: async () => [] },
+      { year: 2026, month: 5 },
+    );
+    const out = stripAnsi(logs.join("\n"));
+    // May 2026 working days: 21 weekdays − 4 FR public holidays
+    // (May 1 Labour Day, May 8 Victory 1945, May 14 Ascension, May 25 Whit Monday) = 17
+    // targetDaysPerWeek=3 → 3 × 17 / 5 = 10.2 → rendered as /10.2
+    expect(out).toContain("/10.2");
+    // The old × 4.33 formula would have produced 3 × 4.33 = 12.99
+    expect(out).not.toContain("12.99");
+    expect(out).not.toContain("12.9");
+  });
 });

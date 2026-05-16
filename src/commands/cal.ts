@@ -1,4 +1,5 @@
 import { aggregateEntries, sumPerClient } from "../domain/aggregate.js";
+import { targetDaysFor } from "../domain/targets.js";
 import { formatISODate, isoWeekOf, monthRange, weekRange } from "../domain/week.js";
 import { renderMonthlyCalendar } from "../render/calendar.js";
 import { renderMonthSummary, renderWeekSummary } from "../render/summary.js";
@@ -21,7 +22,9 @@ export async function runCal(ctx: Context, src: EntrySource, opts: CalOptions): 
   console.log();
 
   const totals = sumPerClient(days);
-  const targets = new Map(ctx.config.clients.map((c) => [c.id, c.targetDaysPerWeek * 4.33] as const));
+  const targets = new Map(
+    ctx.config.clients.map((c) => [c.id, targetDaysFor(c, range, ctx.config.holidaysRegion)] as const),
+  );
   console.log(renderMonthSummary(totals, targets, ctx.config.clients, ctx.t));
   console.log();
 
