@@ -27,6 +27,7 @@ export function renderMonthSummary(
 
 export function renderWeekSummary(
   week: Map<string, number>,
+  targets: Map<string, number>,
   clients: Client[],
   weekNumber: number,
   t: T,
@@ -36,7 +37,7 @@ export function renderWeekSummary(
   for (const c of clients) {
     const days = week.get(c.id) ?? 0;
     total += days;
-    const tgt = c.targetDaysPerWeek;
+    const tgt = targets.get(c.id) ?? 0;
     const bar = progressBar(days, Math.max(tgt, 1), 16, c.color);
     const delta = days - tgt;
     const deltaStr =

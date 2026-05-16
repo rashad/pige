@@ -1,4 +1,5 @@
 import { aggregateEntries, sumPerClient } from "../domain/aggregate.js";
+import { targetDaysFor } from "../domain/targets.js";
 import { formatISODate, isoWeekOf, weekRange } from "../domain/week.js";
 import { WEEKDAYS } from "../i18n.js";
 import { sectionSeparator } from "../render/box.js";
@@ -45,5 +46,8 @@ export async function runWeek(ctx: Context, src: EntrySource, opts?: { date?: Da
 
   console.log();
   const totals = sumPerClient(days);
-  console.log(renderWeekSummary(totals, ctx.config.clients, week, ctx.t));
+  const weekTargets = new Map(
+    ctx.config.clients.map((c) => [c.id, targetDaysFor(c, range, ctx.config.holidaysRegion)] as const),
+  );
+  console.log(renderWeekSummary(totals, weekTargets, ctx.config.clients, week, ctx.t));
 }

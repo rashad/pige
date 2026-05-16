@@ -37,11 +37,25 @@ describe("renderWeekSummary", () => {
       ["acme", 2.5],
       ["globex", 1.5],
     ]);
-    const out = stripAnsi(renderWeekSummary(week, clients, 20, t));
+    const targets = new Map<string, number>([
+      ["acme", 3],
+      ["globex", 2],
+    ]);
+    const out = stripAnsi(renderWeekSummary(week, targets, clients, 20, t));
     expect(out).toContain("Semaine");
     expect(out).toContain("20");
     expect(out).toContain("2.5");
     expect(out).toContain("3.0");
     expect(out).toMatch(/-0\.5|−0\.5/);
+  });
+
+  it("uses the passed-in target, not the client field", () => {
+    const week = new Map<string, number>([["acme", 1.6]]);
+    const targets = new Map<string, number>([["acme", 1.6]]);
+    const out = stripAnsi(
+      renderWeekSummary(week, targets, [{ ...clients[0]!, targetDaysPerWeek: 2 }], 20, t),
+    );
+    expect(out).toContain("1.6");
+    expect(out).toContain("ok");
   });
 });
