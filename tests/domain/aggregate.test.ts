@@ -31,7 +31,11 @@ describe("aggregateEntries", () => {
 
   it("buckets one full day on the right client", () => {
     const entries = [entry("2026-05-11T08:00:00", 7 * 3600, "p1")];
-    const out = aggregateEntries(entries, range, clients, { hoursPerDay: 7, holidaysRegion: "FR", now: new Date("2026-05-13T12:00:00Z") });
+    const out = aggregateEntries(entries, range, clients, {
+      hoursPerDay: 7,
+      holidaysRegion: "FR",
+      now: new Date("2026-05-13T12:00:00Z"),
+    });
     expect(out).toHaveLength(7);
     const mon = out[0]!;
     expect(mon.date).toBe("2026-05-11");
@@ -46,7 +50,11 @@ describe("aggregateEntries", () => {
       entry("2026-05-13T08:00:00", 3.5 * 3600, "p1"),
       entry("2026-05-13T14:00:00", 3.5 * 3600, "p2"),
     ];
-    const out = aggregateEntries(entries, range, clients, { hoursPerDay: 7, holidaysRegion: "FR", now: new Date("2026-05-13T12:00:00Z") });
+    const out = aggregateEntries(entries, range, clients, {
+      hoursPerDay: 7,
+      holidaysRegion: "FR",
+      now: new Date("2026-05-13T12:00:00Z"),
+    });
     const wed = out.find((d) => d.date === "2026-05-13")!;
     expect(wed.perClient.get("acme")).toBe(0.5);
     expect(wed.perClient.get("globex")).toBe(0.5);
@@ -55,14 +63,22 @@ describe("aggregateEntries", () => {
   });
 
   it("marks weekends", () => {
-    const out = aggregateEntries([], range, clients, { hoursPerDay: 7, holidaysRegion: "FR", now: new Date("2026-05-13T12:00:00Z") });
+    const out = aggregateEntries([], range, clients, {
+      hoursPerDay: 7,
+      holidaysRegion: "FR",
+      now: new Date("2026-05-13T12:00:00Z"),
+    });
     const sat = out.find((d) => d.date === "2026-05-16")!;
     expect(sat.isWeekend).toBe(true);
   });
 
   it("unmapped project goes to 'Autres'", () => {
     const entries = [entry("2026-05-12T08:00:00", 7 * 3600, "p_unknown")];
-    const out = aggregateEntries(entries, range, clients, { hoursPerDay: 7, holidaysRegion: "FR", now: new Date("2026-05-13T12:00:00Z") });
+    const out = aggregateEntries(entries, range, clients, {
+      hoursPerDay: 7,
+      holidaysRegion: "FR",
+      now: new Date("2026-05-13T12:00:00Z"),
+    });
     const tue = out.find((d) => d.date === "2026-05-12")!;
     expect(tue.perClient.get("__others")).toBe(1);
     expect(tue.dominantClient).toBe("__others");
@@ -73,7 +89,11 @@ describe("aggregateEntries", () => {
       entry("2026-05-11T08:00:00", 3.5 * 3600, "p1"),
       entry("2026-05-11T13:00:00", 3.5 * 3600, "p1"),
     ];
-    const out = aggregateEntries(entries, range, clients, { hoursPerDay: 7, holidaysRegion: "FR", now: new Date("2026-05-13T12:00:00Z") });
+    const out = aggregateEntries(entries, range, clients, {
+      hoursPerDay: 7,
+      holidaysRegion: "FR",
+      now: new Date("2026-05-13T12:00:00Z"),
+    });
     expect(out[0]!.perClient.get("acme")).toBe(1);
   });
 
@@ -87,7 +107,11 @@ describe("aggregateEntries", () => {
       description: "",
       billable: true,
     };
-    const out = aggregateEntries([e], range, clients, { hoursPerDay: 7, holidaysRegion: "FR", now: new Date("2026-05-13T12:00:00Z") });
+    const out = aggregateEntries([e], range, clients, {
+      hoursPerDay: 7,
+      holidaysRegion: "FR",
+      now: new Date("2026-05-13T12:00:00Z"),
+    });
     expect(out[0]!.totalDays).toBe(0);
   });
 });
