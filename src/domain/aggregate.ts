@@ -21,6 +21,7 @@ export type AggregatedDay = {
 export type AggregateOptions = {
   hoursPerDay: number;
   holidaysRegion: string;
+  now: Date;
 };
 
 export function aggregateEntries(

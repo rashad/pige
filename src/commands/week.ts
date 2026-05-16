@@ -14,6 +14,7 @@ export async function runWeek(ctx: Context, src: EntrySource, opts?: { date?: Da
   const days = aggregateEntries(entries, range, ctx.config.clients, {
     hoursPerDay: ctx.config.conversion.hoursPerDay,
     holidaysRegion: ctx.config.holidaysRegion,
+    now: ctx.now,
   });
   const { week } = isoWeekOf(anchor);
 

@@ -18,6 +18,7 @@ export async function runToday(ctx: Context, src: EntrySource): Promise<void> {
   const days = aggregateEntries(entries, week, ctx.config.clients, {
     hoursPerDay: ctx.config.conversion.hoursPerDay,
     holidaysRegion: ctx.config.holidaysRegion,
+    now: ctx.now,
   });
 
   const todayIso = formatISODate(today);

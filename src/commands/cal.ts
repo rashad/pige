@@ -14,6 +14,7 @@ export async function runCal(ctx: Context, src: EntrySource, opts: CalOptions): 
   const days = aggregateEntries(entries, range, ctx.config.clients, {
     hoursPerDay: ctx.config.conversion.hoursPerDay,
     holidaysRegion: ctx.config.holidaysRegion,
+    now: ctx.now,
   });
 
   console.log(renderMonthlyCalendar(opts.year, opts.month, days, ctx.config.clients, ctx.t, ctx.locale));
@@ -29,6 +30,7 @@ export async function runCal(ctx: Context, src: EntrySource, opts: CalOptions): 
     const weekDays = aggregateEntries(entries, wk, ctx.config.clients, {
       hoursPerDay: ctx.config.conversion.hoursPerDay,
       holidaysRegion: ctx.config.holidaysRegion,
+      now: ctx.now,
     });
     const weekTotals = sumPerClient(weekDays);
     const { week } = isoWeekOf(ctx.now);
