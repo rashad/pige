@@ -4,6 +4,7 @@ import { runCal } from "./commands/cal.js";
 import { runConfig } from "./commands/config.js";
 import { runHelp } from "./commands/help.js";
 import { runMenu } from "./commands/menu.js";
+import { COMMAND_NAMES } from "./commands/registry.js";
 import { runStatus } from "./commands/status.js";
 import { runSync } from "./commands/sync.js";
 import { runToday } from "./commands/today.js";
@@ -22,7 +23,7 @@ async function main() {
   const fresh = args.includes("--fresh");
   const cmd = args.find((a) => !a.startsWith("--")) ?? "menu";
 
-  const knownCmds = new Set(["config", "menu", "today", "week", "cal", "sync", "status"]);
+  const knownCmds = new Set(COMMAND_NAMES);
   if (!knownCmds.has(cmd)) {
     const bootLocale = detectSystemLocale();
     const bootT = createT(bootLocale);
