@@ -108,6 +108,24 @@ time up to the moment of the last fetch and marks the day with `…`. The
 fetch cache is 5 minutes long, so the displayed total can lag by a few
 minutes — use `pige today --fresh` for an up-to-the-second figure.
 
+## Shell completion
+
+Zsh is supported in v1 (bash and fish on the roadmap).
+
+```bash
+# Per-user install (no sudo)
+mkdir -p "${ZDOTDIR:-$HOME}/.zfunc"
+pige completion zsh > "${ZDOTDIR:-$HOME}/.zfunc/_pige"
+# Add once to ~/.zshrc:
+#   fpath=(${ZDOTDIR:-$HOME}/.zfunc $fpath)
+#   autoload -U compinit && compinit
+
+# System-wide (requires write access)
+pige completion zsh | sudo tee /usr/local/share/zsh/site-functions/_pige > /dev/null
+```
+
+Regenerate `_pige` after every `pige` upgrade to pick up new commands or flags.
+
 ## Where data lives
 
 | What | Where |
