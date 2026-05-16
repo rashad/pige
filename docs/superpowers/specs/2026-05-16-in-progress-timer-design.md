@@ -73,14 +73,14 @@ The flag is purely informational. Totals already include the substituted duratio
 - An open entry that spans midnight (started yesterday, still running today): aggregated against its start date, same as Solidtime's own per-entry behaviour. We do not split across days. Acceptable because the existing aggregation also bins by `start`, not by elapsed-day overlap.
 - An open entry with `start` in the future: skipped as malformed.
 
-### Render layer — `src/render/summary.ts` only
+### Render layer — `src/commands/today.ts` only
 
-Only `pige today` consumes the new flag. When the day being rendered has `hasOpenEntry === true`:
+The "today" section is rendered inline by `runToday` (`src/commands/today.ts:29-39`), not via `render/summary.ts`. Only that block consumes the new flag. When `todayAgg.hasOpenEntry === true`:
 
-- Append a trailing ` …` (single Unicode horizontal ellipsis, U+2026) after the totals figure.
-- On a separate dim line below the totals row, render ` (use --fresh to refresh)` exactly once. Dim colour from the existing palette (`muted`).
+- Append a trailing ` …` (single Unicode horizontal ellipsis, U+2026) after the total figure.
+- After the total line, print one dim line: ` (use --fresh to refresh)`.
 
-`render/calendar.ts` and `render/bars.ts` are untouched. Week view (`commands/week.ts`'s render path) does not consult the flag.
+The trailing "current week" block (which calls `renderWeekSummary`), the calendar (`render/calendar.ts`), and the standalone week view (`commands/week.ts`) are untouched.
 
 ### i18n — `src/i18n.ts`
 
@@ -106,10 +106,10 @@ Every command that builds `AggregateOptions` (`today.ts`, `week.ts`, `cal.ts`) n
 3. **Open entry with a future `start` is skipped.** Defensive case — `start = now + 1h`, `end = null` → skipped.
 4. **Closed entries still aggregate normally.** Regression guard — the existing tests already cover this, but one explicit assertion lives next to the new ones for readability.
 
-### `tests/render/summary.test.ts` — new cases
+### `tests/commands/today.test.ts` — new cases
 
-5. **`hasOpenEntry: true` snapshot includes `…` and the hint line.** Strip ANSI, assert both strings present.
-6. **`hasOpenEntry: false` snapshot has neither.** Regression guard.
+5. **An in-progress entry causes today's output to include `…` and the hint line.** Pass a `TimeEntry` with `end: null` that started 90 minutes before `ctx.now`. Strip ANSI; assert both strings appear in `today`'s section (not the trailing week summary).
+6. **A closed-only fixture does NOT include `…` or the hint line.** Regression guard, runs against the existing test entry.
 
 ### Fixtures
 
