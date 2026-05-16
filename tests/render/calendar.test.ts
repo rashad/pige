@@ -22,6 +22,7 @@ function emptyDay(date: string, weekday: number, isWeekend: boolean): Aggregated
     perClient: new Map(),
     totalDays: 0,
     isMixed: false,
+    hasOpenEntry: false,
   };
 }
 

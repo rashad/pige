@@ -97,21 +97,69 @@ describe("aggregateEntries", () => {
     expect(out[0]!.perClient.get("acme")).toBe(1);
   });
 
-  it("running entry (end null) is ignored", () => {
-    const e: TimeEntry = {
-      id: "x",
-      start: "2026-05-11T08:00:00.000Z",
+  it("open entry: substitutes now for missing end and flags the day", () => {
+    const now = new Date("2026-05-13T09:30:00Z"); // Wed
+    const open: TimeEntry = {
+      id: "open1",
+      start: "2026-05-13T08:00:00Z",
       end: null,
       duration: null,
       projectId: "p1",
       description: "",
       billable: true,
     };
-    const out = aggregateEntries([e], range, clients, {
+    const out = aggregateEntries([open], range, clients, {
       hoursPerDay: 7,
       holidaysRegion: "FR",
-      now: new Date("2026-05-13T12:00:00Z"),
+      now,
     });
-    expect(out[0]!.totalDays).toBe(0);
+    const wed = out.find((d) => d.date === "2026-05-13")!;
+    // 1.5 hours elapsed / 7 hours per day = ~0.214 days; hoursToDays rounds to 2 dp → 0.21
+    expect(wed.perClient.get("acme")).toBeCloseTo(1.5 / 7, 1);
+    expect(wed.hasOpenEntry).toBe(true);
+  });
+
+  it("open entry: start outside range is skipped", () => {
+    const now = new Date("2026-05-13T09:30:00Z");
+    const open: TimeEntry = {
+      id: "open2",
+      start: "2026-05-09T10:00:00Z", // before range.start (May 11)
+      end: null,
+      duration: null,
+      projectId: "p1",
+      description: "",
+      billable: true,
+    };
+    const out = aggregateEntries([open], range, clients, {
+      hoursPerDay: 7,
+      holidaysRegion: "FR",
+      now,
+    });
+    for (const d of out) {
+      expect(d.hasOpenEntry).toBe(false);
+      expect(d.totalDays).toBe(0);
+    }
+  });
+
+  it("open entry: start in the future is skipped", () => {
+    const now = new Date("2026-05-13T09:30:00Z");
+    const open: TimeEntry = {
+      id: "open3",
+      start: "2026-05-19T10:00:00Z", // after range.end (May 17)
+      end: null,
+      duration: null,
+      projectId: "p1",
+      description: "",
+      billable: true,
+    };
+    const out = aggregateEntries([open], range, clients, {
+      hoursPerDay: 7,
+      holidaysRegion: "FR",
+      now,
+    });
+    for (const d of out) {
+      expect(d.hasOpenEntry).toBe(false);
+      expect(d.totalDays).toBe(0);
+    }
   });
 });

@@ -16,6 +16,7 @@ export type AggregatedDay = {
   totalDays: number;
   dominantClient?: ClientId | typeof OTHERS_ID;
   isMixed: boolean;
+  hasOpenEntry: boolean;
 };
 
 export type AggregateOptions = {
@@ -36,10 +37,20 @@ export function aggregateEntries(
   }
 
   const byDay = new Map<string, Map<string, number>>();
+  const openDays = new Set<string>();
   for (const e of entries) {
-    if (e.duration == null || e.end == null) continue;
+    let durationSec = e.duration;
+    let isOpen = false;
+    if (e.end == null) {
+      const start = new Date(e.start);
+      // Only substitute when the open entry's start is inside the requested range.
+      if (start < range.start || start > range.end) continue;
+      durationSec = Math.max(0, Math.floor((opts.now.getTime() - start.getTime()) / 1000));
+      isOpen = true;
+    }
+    if (durationSec == null) continue;
     const date = formatISODate(new Date(e.start));
-    const hours = secondsToHours(e.duration);
+    const hours = secondsToHours(durationSec);
     const clientId = projectToClient.get(e.projectId) ?? OTHERS_ID;
     let row = byDay.get(date);
     if (!row) {
@@ -47,6 +58,7 @@ export function aggregateEntries(
       byDay.set(date, row);
     }
     row.set(clientId, (row.get(clientId) ?? 0) + hours);
+    if (isOpen) openDays.add(date);
   }
 
   return eachDayInRange(range).map((d) => {
@@ -82,6 +94,7 @@ export function aggregateEntries(
       totalDays: total,
       dominantClient: dominant,
       isMixed: nonZero >= 2,
+      hasOpenEntry: openDays.has(date),
     };
   });
 }
