@@ -19,6 +19,8 @@ const fr = {
   "today.title": "Aujourd'hui",
   "today.nothing": "Rien enregistré aujourd'hui.",
   "today.total": "Total :",
+  "today.openEntry": "…",
+  "today.useFresh": "(utiliser --fresh pour rafraîchir)",
 
   // week-detail
   "week.title": "Semaine {week}",
@@ -99,6 +101,8 @@ const en: Record<keyof typeof fr, string> = {
   "today.title": "Today",
   "today.nothing": "Nothing logged today.",
   "today.total": "Total:",
+  "today.openEntry": "…",
+  "today.useFresh": "(use --fresh to refresh)",
 
   // week-detail
   "week.title": "Week {week}",
