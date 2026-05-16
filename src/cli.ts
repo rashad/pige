@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { buildEntrySource } from "./cli/entrySource.js";
 import { runCal } from "./commands/cal.js";
+import { runCompletion } from "./commands/completion.js";
 import { runConfig } from "./commands/config.js";
 import { runHelp } from "./commands/help.js";
 import { runMenu } from "./commands/menu.js";
@@ -29,6 +30,12 @@ async function main() {
     const bootT = createT(bootLocale);
     console.error(bootT("errors.unknownCmd", { cmd }));
     process.exit(2);
+  }
+
+  if (cmd === "completion") {
+    const shell = args.find((a) => !a.startsWith("-") && a !== "completion") ?? "";
+    runCompletion(shell);
+    return;
   }
 
   if (cmd === "config") {
