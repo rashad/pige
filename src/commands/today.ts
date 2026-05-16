@@ -32,9 +32,13 @@ export async function runToday(ctx: Context, src: EntrySource): Promise<void> {
       const v = todaySum.get(c.id) ?? 0;
       if (v > 0) console.log(`   ${accent(c.label.padEnd(10))} ${v.toFixed(2)} ${ctx.t("unit.day")}`);
     }
+    const openMark = todayAgg.hasOpenEntry ? ` ${ctx.t("today.openEntry")}` : "";
     console.log(
-      `   ${dim(ctx.t("today.total"))} ${accent(todayAgg.totalDays.toFixed(2))} ${ctx.t("unit.day")}`,
+      `   ${dim(ctx.t("today.total"))} ${accent(todayAgg.totalDays.toFixed(2))} ${ctx.t("unit.day")}${openMark}`,
     );
+    if (todayAgg.hasOpenEntry) {
+      console.log(`   ${dim(ctx.t("today.useFresh"))}`);
+    }
   } else {
     console.log(`   ${dim(ctx.t("today.nothing"))}`);
   }

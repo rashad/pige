@@ -41,5 +41,34 @@ describe("runToday", () => {
     expect(out).toContain("Aujourd'hui");
     expect(out).toContain("Acme");
     expect(out).toContain("Semaine");
+    expect(out).not.toContain("…");
+    expect(out).not.toContain("--fresh");
+  });
+
+  it("shows … and the use-fresh hint when today has an open entry", async () => {
+    const logs: string[] = [];
+    vi.spyOn(console, "log").mockImplementation((s: string) => {
+      logs.push(s);
+    });
+    const now = new Date(2026, 4, 13, 11, 0, 0); // Wed 11:00 local
+    await runToday(
+      { config: cfg, now, fresh: false, locale: "fr", t: createT("fr") },
+      {
+        fetchEntries: async () => [
+          {
+            id: "open",
+            start: new Date(2026, 4, 13, 9, 30, 0).toISOString(), // started 90 min ago
+            end: null,
+            duration: null,
+            projectId: "p1",
+            description: "",
+            billable: true,
+          },
+        ],
+      },
+    );
+    const out = stripAnsi(logs.join("\n"));
+    expect(out).toContain("…");
+    expect(out).toContain("--fresh");
   });
 });
