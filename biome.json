@@ -6,7 +6,7 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["**", "!**/dist", "!**/node_modules", "!**/coverage", "!**/.vitest-cache"]
+    "includes": ["**", "!**/dist", "!**/node_modules", "!**/coverage", "!**/.vitest-cache", "!**/.claude"]
   },
   "formatter": {
     "enabled": true,
