@@ -41,7 +41,9 @@ export async function runWeek(ctx: Context, src: EntrySource, opts?: { date?: Da
       })
       .filter((x): x is string => x !== null)
       .join("  ");
-    console.log(`   ${cell}  ${accent(label)}   ${dim(fractions || ctx.t("week.empty"))}`);
+    const openMark =
+      d.hasOpenEntry && d.date === formatISODate(ctx.now) ? ` ${ctx.t("today.openEntry")}` : "";
+    console.log(`   ${cell}  ${accent(label)}   ${dim(fractions || ctx.t("week.empty"))}${openMark}`);
   }
 
   console.log();
