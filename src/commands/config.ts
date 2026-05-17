@@ -91,6 +91,14 @@ export async function runConfig(): Promise<void> {
 
   if (clients.length > 0) {
     console.log(dim(t("config.existingClients", { labels: clients.map((c) => c.label).join(", ") })));
+    for (const c of clients) {
+      const targetStr = await input({
+        message: t("config.targetFor", { label: c.label }),
+        default: String(c.targetDaysPerWeek),
+        validate: (s) => !Number.isNaN(parseFloat(s)) || t("config.validate.number"),
+      });
+      c.targetDaysPerWeek = parseFloat(targetStr);
+    }
   }
 
   while (remaining.length > 0) {
