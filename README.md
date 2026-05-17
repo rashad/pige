@@ -51,24 +51,20 @@ You track per-second time in Solidtime, but you bill in days. Solidtime answers 
 git clone git@github.com:rashad/pige.git
 cd pige
 npm install
-npm run build
-npm link
+npm run setup
 ```
 
-Verify:
+`npm run setup` builds the binary, links it onto your PATH, and installs zsh tab-completion in one step. Verify with:
 
 ```bash
 which pige
 ```
 
-**Optional — zsh tab completion:**
+After upgrading (pulling new commits), rebuild and re-link with:
 
 ```bash
-pige completion install
-exec zsh
+npm run reload
 ```
-
-This writes `~/.zfunc/_pige` and adds the `fpath` line to `~/.zshrc` automatically. Re-run after upgrading `pige` to pick up new commands.
 
 ## First run
 
@@ -171,6 +167,8 @@ The UI is available in **English** (default for new installs) and **French**. Yo
 
 ```bash
 npm test            # vitest, 96 tests
+npm run verify      # check + typecheck + test + build (full CI gate)
+npm run reload      # rebuild and re-link after local changes
 npm run typecheck   # tsc --noEmit
 npm run build       # tsup → dist/cli.js
 npx tsx src/cli.ts  # dev run without rebuild

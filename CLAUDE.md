@@ -52,10 +52,12 @@ npm run typecheck             # tsc --noEmit
 npm run check                 # biome check (lint + format + imports, read-only)
 npm run check:fix             # biome check --write (apply fixes)
 npm run build                 # tsup → dist/cli.js
+npm run verify                # check + typecheck + test + build (full CI gate, one command)
+npm run reload                # build + npm link (re-link after local changes)
 npm run link:local            # build + npm link → `pige` on PATH for manual testing
 ```
 
-CI runs `check → typecheck → test → build` in that order. Match that locally before pushing if you want green on the first try.
+CI runs `check → typecheck → test → build` in that order. Run `npm run verify` locally before pushing to match that exactly.
 
 ## Conventions
 

@@ -40,6 +40,9 @@
     "format": "biome format --write",
     "check": "biome check",
     "check:fix": "biome check --write",
+    "setup": "npm run build && npm link && node dist/cli.js completion install",
+    "reload": "npm run build && npm link",
+    "verify": "npm run check && npm run typecheck && npm test && npm run build",
     "prepare": "npm run build",
     "link:local": "npm run build && npm link"
   },
