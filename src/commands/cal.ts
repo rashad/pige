@@ -22,9 +22,7 @@ export async function runCal(ctx: Context, src: EntrySource, opts: CalOptions): 
   console.log();
 
   const totals = sumPerClient(days);
-  const targets = new Map(
-    ctx.config.clients.map((c) => [c.id, targetDaysFor(c, range, ctx.config.holidaysRegion)] as const),
-  );
+  const targets = new Map(ctx.config.clients.map((c) => [c.id, targetDaysFor(c, range)] as const));
   console.log(renderMonthSummary(totals, targets, ctx.config.clients, ctx.t));
   console.log();
 
@@ -37,9 +35,7 @@ export async function runCal(ctx: Context, src: EntrySource, opts: CalOptions): 
     });
     const weekTotals = sumPerClient(weekDays);
     const { week } = isoWeekOf(ctx.now);
-    const weekTargets = new Map(
-      ctx.config.clients.map((c) => [c.id, targetDaysFor(c, wk, ctx.config.holidaysRegion)] as const),
-    );
+    const weekTargets = new Map(ctx.config.clients.map((c) => [c.id, targetDaysFor(c, wk)] as const));
     console.log(renderWeekSummary(weekTotals, weekTargets, ctx.config.clients, week, ctx.t));
   }
 }

@@ -44,7 +44,7 @@ describe("runCal", () => {
     expect(out).toContain("Semaine");
   });
 
-  it("monthly target is holiday-aware, not × 4.33", async () => {
+  it("monthly target counts all weekdays, not × 4.33", async () => {
     const logs: string[] = [];
     vi.spyOn(console, "log").mockImplementation((s: string) => {
       logs.push(s);
@@ -55,12 +55,11 @@ describe("runCal", () => {
       { year: 2026, month: 5 },
     );
     const out = stripAnsi(logs.join("\n"));
-    // May 2026 working days: 21 weekdays − 4 FR public holidays
-    // (May 1 Labour Day, May 8 Victory 1945, May 14 Ascension, May 25 Whit Monday) = 17
-    // targetDaysPerWeek=3 → 3 × 17 / 5 = 10.2 → rendered as /10.2
-    expect(out).toContain("/10.2");
+    // May 2026 has 21 weekdays (holidays are not subtracted from targets).
+    // targetDaysPerWeek=3 → 3 × 21 / 5 = 12.6 → rendered as /12.6
+    expect(out).toContain("/12.6");
     // The old × 4.33 formula would have produced 3 × 4.33 = 12.99
     expect(out).not.toContain("12.99");
-    expect(out).not.toContain("12.9");
+    expect(out).not.toContain("10.2");
   });
 });

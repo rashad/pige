@@ -47,8 +47,6 @@ export async function runToday(ctx: Context, src: EntrySource): Promise<void> {
 
   const weekTotals = sumPerClient(days);
   const { week: wk } = isoWeekOf(today);
-  const weekTargets = new Map(
-    ctx.config.clients.map((c) => [c.id, targetDaysFor(c, week, ctx.config.holidaysRegion)] as const),
-  );
+  const weekTargets = new Map(ctx.config.clients.map((c) => [c.id, targetDaysFor(c, week)] as const));
   console.log(renderWeekSummary(weekTotals, weekTargets, ctx.config.clients, wk, ctx.t));
 }

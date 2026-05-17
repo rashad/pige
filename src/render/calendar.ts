@@ -16,7 +16,7 @@ export function renderMonthlyCalendar(
   locale: Locale,
 ): string {
   const monthName = MONTHS[locale][month1to12 - 1] ?? "";
-  const businessDays = days.filter((d) => !d.isWeekend && !d.isHoliday).length;
+  const businessDays = days.filter((d) => !d.isWeekend).length;
   const workedDays = days.filter((d) => d.totalDays > 0).length;
   const title = `pige · ${monthName} ${year}`;
   const rightHud = t("calendar.daysHud", { worked: workedDays, business: businessDays });

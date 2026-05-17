@@ -17,9 +17,8 @@ export function renderMonthSummary(
     const days = totals.get(c.id) ?? 0;
     const target = targets.get(c.id) ?? 0;
     const bar = progressBar(days, Math.max(target, 1), 16, c.color);
-    const pct = target > 0 ? `${Math.round((days / target) * 100)} %` : "—";
     lines.push(
-      `   ${accent(c.label.padEnd(10))} ${days.toFixed(1).padStart(5)} ${t("unit.day")}   ${bar}  ${dim(`/${target}`)}  ${dim(pct.padStart(5))}`,
+      `   ${accent(c.label.padEnd(10))} ${days.toFixed(1).padStart(5)} ${t("unit.day")}   ${bar}  ${dim(`/${target}`)}`,
     );
   }
   return lines.join("\n");
