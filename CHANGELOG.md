@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] — 2026-05-17
+
+### Added
+
+- `npm run setup` — builds, links, and installs zsh completion in one step (for first-time installs).
+- `npm run reload` — rebuilds and re-links after local changes.
+- `npm run verify` — runs the full CI gate (`check → typecheck → test → build`) in one command.
+
+### Fixed
+
+- Excluded `.claude` directory from Biome checks so `npm run verify` passes cleanly on cloned repos.
+
 ## [0.4.0] — 2026-05-17
 
 ### Added
@@ -67,7 +79,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Configuration wizard** that pre-populates from existing config — pressing Enter through every prompt keeps the current setup.
 - MIT licensed.
 
-[Unreleased]: https://github.com/rashad/pige/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/rashad/pige/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/rashad/pige/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/rashad/pige/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/rashad/pige/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/rashad/pige/compare/v0.1.0...v0.2.0
