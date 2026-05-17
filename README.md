@@ -150,11 +150,14 @@ Override the config directory with `PIGE_DIR=…`. Provide the token via `PIGE_S
 
 ## Targets
 
-Each client's `targetDaysPerWeek` is the basis for both weekly and
-monthly expectations. Set `5` for full-time (you'll be expected every
-weekday), or a smaller number for partial contracts. The monthly target
-shown by `pige cal` is `targetDaysPerWeek × (weekdays in the month) / 5`
-— weekends are excluded, public holidays are not.
+Each client's `targetDaysPerWeek` is set during `pige config` (the last
+step per client) and is editable any time by re-running `pige config` or
+editing `targetDaysPerWeek` directly in `~/.config/pige/config.json`.
+
+Set `5` for full-time (you'll be expected every weekday), or a smaller
+number for partial contracts. The monthly target shown by `pige cal` is
+`targetDaysPerWeek × (weekdays in the month) / 5` — weekends are
+excluded, public holidays are not.
 
 ## Language
 
