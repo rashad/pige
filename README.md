@@ -22,8 +22,8 @@ A small terminal calendar for freelance day tracking, built on top of [Solidtime
 
   ── This month ────────────────────────────────────────────
 
-    ▓ Acme       8.5 d   ████████▌░░░░░░    /15     57 %
-    ▒ Globex     6.0 d   ███████▎░░░░░░░    /10     60 %
+    ▓ Acme       8.5 d   ████████▌░░░░░░    /15
+    ▒ Globex     6.0 d   ███████▎░░░░░░░    /10
 
   ── Current week (W20) ────────────────────────────────────
 
@@ -60,6 +60,15 @@ Verify:
 ```bash
 which pige
 ```
+
+**Optional — zsh tab completion:**
+
+```bash
+pige completion install
+exec zsh
+```
+
+This writes `~/.zfunc/_pige` and adds the `fpath` line to `~/.zshrc` automatically. Re-run after upgrading `pige` to pick up new commands.
 
 ## First run
 
@@ -110,21 +119,20 @@ minutes — use `pige today --fresh` for an up-to-the-second figure.
 
 ## Shell completion
 
-Zsh is supported in v1 (bash and fish on the roadmap).
+Zsh is supported (bash and fish on the roadmap).
 
 ```bash
-# Per-user install (no sudo)
-mkdir -p "${ZDOTDIR:-$HOME}/.zfunc"
-pige completion zsh > "${ZDOTDIR:-$HOME}/.zfunc/_pige"
-# Add once to ~/.zshrc:
-#   fpath=(${ZDOTDIR:-$HOME}/.zfunc $fpath)
-#   autoload -U compinit && compinit
+pige completion install   # writes ~/.zfunc/_pige, patches ~/.zshrc, prints next steps
+exec zsh                  # reload to activate
+```
 
-# System-wide (requires write access)
+For a system-wide install or a non-default location:
+
+```bash
 pige completion zsh | sudo tee /usr/local/share/zsh/site-functions/_pige > /dev/null
 ```
 
-Regenerate `_pige` after every `pige` upgrade to pick up new commands or flags.
+Re-run `pige completion install` (or regenerate `_pige` manually) after upgrading `pige`.
 
 ## Where data lives
 
@@ -144,10 +152,9 @@ Override the config directory with `PIGE_DIR=…`. Provide the token via `PIGE_S
 
 Each client's `targetDaysPerWeek` is the basis for both weekly and
 monthly expectations. Set `5` for full-time (you'll be expected every
-working day; weekends and public holidays are automatically excluded),
-or a smaller number for partial contracts. The monthly target shown by
-`pige cal` is `targetDaysPerWeek × (working days in the month) / 5`,
-so a holiday in the month reduces the expected total proportionally.
+weekday), or a smaller number for partial contracts. The monthly target
+shown by `pige cal` is `targetDaysPerWeek × (weekdays in the month) / 5`
+— weekends are excluded, public holidays are not.
 
 ## Language
 
@@ -160,7 +167,7 @@ The UI is available in **English** (default for new installs) and **French**. Yo
 ## Develop
 
 ```bash
-npm test            # vitest, 58 tests
+npm test            # vitest, 96 tests
 npm run typecheck   # tsc --noEmit
 npm run build       # tsup → dist/cli.js
 npx tsx src/cli.ts  # dev run without rebuild
