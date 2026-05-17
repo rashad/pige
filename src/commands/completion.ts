@@ -1,3 +1,6 @@
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import { COMMANDS, type CommandFlag, GLOBAL_FLAGS } from "./registry.js";
 
 export function runCompletion(shell: string): void {
@@ -6,6 +9,30 @@ export function runCompletion(shell: string): void {
     process.exit(2);
   }
   console.log(buildZshCompletion());
+}
+
+export function runCompletionInstall(): void {
+  const zfunc = process.env.ZDOTDIR ? join(process.env.ZDOTDIR, ".zfunc") : join(homedir(), ".zfunc");
+  const target = join(zfunc, "_pige");
+
+  mkdirSync(zfunc, { recursive: true });
+  writeFileSync(target, buildZshCompletion(), { encoding: "utf8" });
+  console.log(`Completion script written to ${target}`);
+
+  const zshrc = join(homedir(), ".zshrc");
+  const setupLine = `fpath=(${zfunc} $fpath); autoload -U compinit && compinit`;
+  let alreadySetUp = false;
+  if (existsSync(zshrc)) {
+    const content = readFileSync(zshrc, { encoding: "utf8" });
+    alreadySetUp = content.includes(zfunc);
+  }
+  if (!alreadySetUp) {
+    writeFileSync(zshrc, `\n# pige zsh completion\n${setupLine}\n`, { flag: "a", encoding: "utf8" });
+    console.log(`Added fpath setup to ${zshrc}`);
+  } else {
+    console.log(`${zshrc} already references ${zfunc} — skipping`);
+  }
+  console.log("Reload your shell or run: exec zsh");
 }
 
 function zshEscape(s: string): string {

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { buildEntrySource } from "./cli/entrySource.js";
 import { runCal } from "./commands/cal.js";
-import { runCompletion } from "./commands/completion.js";
+import { runCompletion, runCompletionInstall } from "./commands/completion.js";
 import { runConfig } from "./commands/config.js";
 import { runHelp } from "./commands/help.js";
 import { runMenu } from "./commands/menu.js";
@@ -33,8 +33,12 @@ async function main() {
   }
 
   if (cmd === "completion") {
-    const shell = args.find((a) => !a.startsWith("-") && a !== "completion") ?? "";
-    runCompletion(shell);
+    const sub = args.find((a) => !a.startsWith("-") && a !== "completion") ?? "";
+    if (sub === "install") {
+      runCompletionInstall();
+    } else {
+      runCompletion(sub);
+    }
     return;
   }
 
