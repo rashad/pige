@@ -7,10 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-05-17
+
 ### Added
 
-- `pige completion zsh` emits a static zsh completion script covering
-  every subcommand and flag. See README for install steps.
+- **Shell completion**: `pige completion zsh` emits a zsh completion script covering all subcommands and flags. `pige completion install` writes `~/.zfunc/_pige` and patches `~/.zshrc` automatically — no manual redirect needed.
+- **Running timer in `pige today` and `pige week`**: when a Solidtime timer is active, its elapsed time is included in the displayed totals and the day is marked with `…`. Use `--fresh` for an up-to-the-second figure.
+- **Per-client target editing in `pige config`**: existing clients now show a days-per-week prompt (pre-populated with the current value) so targets can be updated without re-adding clients.
+
+### Changed
+
+- **Weekday-based targets**: `targetDaysPerWeek` now counts all weekdays in the period — weekends excluded, public holidays included. A 5-day/week client in May 2026 has a target of 21 days, not 17. The calendar HUD reflects the same count.
+- **Monthly summary**: removed the `%` column from `pige cal`'s "This month" section.
 
 ## [0.3.0] — 2026-05-13
 
@@ -59,7 +67,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Configuration wizard** that pre-populates from existing config — pressing Enter through every prompt keeps the current setup.
 - MIT licensed.
 
-[Unreleased]: https://github.com/rashad/pige/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/rashad/pige/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/rashad/pige/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/rashad/pige/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/rashad/pige/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/rashad/pige/releases/tag/v0.1.0
